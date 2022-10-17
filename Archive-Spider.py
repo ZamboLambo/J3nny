@@ -10,7 +10,7 @@ from thread_parser import *
 thread_pattern = "mr-co"
 board = "co"
 sleep_minutes = 5
-minreplies = 8
+minreplies = 1
 
 #Gets first thread link from archive based on pattern
 #Pattern is thread title or if theres none, body of text
@@ -53,17 +53,12 @@ def main():
                 except FileNotFoundError:
                     open("Nominations_list.txt",'x')
                 finally:
-                    f = open("Nominations_list.txt",'r+')
+                    a = open("Nominations_list.txt","a")
                     for item in character_list:
-                        f.write(item)
+                        a.write(item + "\n")
+                    a.close()
+
                     print(str(len(character_list)) + " nominations added to nomination file.")
-                    for entry_a, entry_b in itertools.combinations(f,2):
-                        similarity_alpha = round(difflib.SequenceMatcher(lambda x: x == " ",entry_a,entry_b))
-                        if (similarity_alpha > 0.65): #remove repeats
-                            d = f.readlines()
-                            for item in d:
-                                if item != entry_a:
-                                    f.write(item)
 
 
             else:
@@ -71,7 +66,7 @@ def main():
 
 
 
-
+        #add function to remove possible repeats here
         print("Going off for " + str(sleep_minutes) + " minutes")
         sleep(sleep_minutes * 60)
 
@@ -80,4 +75,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
