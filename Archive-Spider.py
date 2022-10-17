@@ -10,7 +10,7 @@ from thread_parser import *
 thread_pattern = "mr-co"
 board = "co"
 sleep_minutes = 5
-minreplies = 1
+minreplies = 8
 
 #Gets first thread link from archive based on pattern
 #Pattern is thread title or if theres none, body of text
