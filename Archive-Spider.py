@@ -3,7 +3,6 @@ from urllib.request import urlopen
 import requests
 from bs4 import BeautifulSoup
 import re
-import itertools
 import difflib
 from thread_parser import *
 
@@ -24,6 +23,23 @@ def get_thread(pattern,board):
     cut2 = re.split("href=\"",cut1[0])
     thread = "https://boards.4channel.org" + cut2[1]
     return thread
+
+#takes filename, removes repeat text entries from it
+def remove_similar(file):
+    with open(file, "r") as f:
+        item_list = []
+        item_list = f.readlines()
+        for i,j in enumerate(item_list):
+            for y in range(i+1,len(item_list)):
+                x = item_list[y]
+                if(difflib.SequenceMatcher(lambda a: a in " ",j,x).ratio() > 0.65):
+                    item_list.pop(y)
+                    break
+        with open(file, "w") as f:
+            for item in item_list:
+                f.write(item)
+    print(item_list)
+    f.close()
 
 def main():
     while(True):
@@ -47,13 +63,14 @@ def main():
                 f.close()
                 post_list = get_posts(curr_thread)
                 character_list = handle_posts(post_list,minreplies)
+                file_name = "Nominations_list.txt"
 
                 try:
-                    open("Nominations_list.txt")
+                    open(file_name)
                 except FileNotFoundError:
-                    open("Nominations_list.txt",'x')
+                    open(file_name,'x')
                 finally:
-                    a = open("Nominations_list.txt","a")
+                    a = open(file_name,"a")
                     for item in character_list:
                         a.write(item + "\n")
                     a.close()
@@ -66,7 +83,7 @@ def main():
 
 
 
-        #add function to remove possible repeats here
+        remove_similar(file_name)
         print("Going off for " + str(sleep_minutes) + " minutes")
         sleep(sleep_minutes * 60)
 
@@ -75,5 +92,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
