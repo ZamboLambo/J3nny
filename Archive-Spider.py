@@ -41,7 +41,6 @@ def main():
 
             curr_thread = get_thread(thread_pattern,board)
 
-            print(fields)
             if curr_thread not in fields: 
                 print("Beginning scrape routine of " + curr_thread)
                 f.write(curr_thread + "\n") #unscraped thread, append to list and scrape
