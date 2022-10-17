@@ -5,12 +5,7 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 import re
 
-globvar = 0
-
 def is_post_valid(post,minreplies):
-    global globvar
-    print(str(globvar) + " posts verified." )
-    globvar = globvar + 1
     try:
         post.find_element(By.TAG_NAME,"img")
     except NoSuchElementException:
