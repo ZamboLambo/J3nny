@@ -18,7 +18,7 @@ def is_post_valid(post,minreplies):
         else:
             replies = post.find_element(By.CLASS_NAME,'backlink').text
             reply_list = replies.split()
-            if(len(reply_list) => minreplies):
+            if(len(reply_list) < minreplies):
                 return False #not enough replies, invalid
             post_message = post.find_element(By.CLASS_NAME,'postMessage').text
             match = re.search("[Nn]ominating.*from.*[.]",post_message)
