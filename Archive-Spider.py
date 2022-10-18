@@ -42,6 +42,7 @@ def remove_similar(file):
     f.close()
 
 def main():
+    file_name = "Nominations_list.txt"
     while(True):
         
         try:
@@ -63,7 +64,7 @@ def main():
                 f.close()
                 post_list = get_posts(curr_thread)
                 character_list = handle_posts(post_list,minreplies)
-                file_name = "Nominations_list.txt"
+                
 
                 try:
                     open(file_name)
