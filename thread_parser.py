@@ -21,11 +21,11 @@ def is_post_valid(post,minreplies):
             if(len(reply_list) < minreplies):
                 return False #not enough replies, invalid
             post_message = post.find_element(By.CLASS_NAME,'postMessage').text
-            match = re.search("[Nn]ominating.*from.*[.]",post_message)
+            match = re.search("[Nn]ominating.*from.*[./n]",post_message)
             if match:
                 return True #fits the bill, passed all tests, valid post
             else:
-                return False #doesnt fit the pattern, invalid
+                return False #doesnt have the pattern, invalid
 
 
 def get_posts(link): #goes to link, returns list of post webelements
@@ -40,7 +40,6 @@ def get_posts(link): #goes to link, returns list of post webelements
     #driver.close()
     return post_list
 
-#
 def handle_posts(posts, minreplies): #takes the original post list, converts into valid string list to archive
     valid_posts = []
 
@@ -51,7 +50,7 @@ def handle_posts(posts, minreplies): #takes the original post list, converts int
     item_list = []
     for post in valid_posts:
        postmessage = post.find_element(By.CLASS_NAME,'postMessage').text
-       templist = re.split(r"[Nn]ominating|[.]", postmessage) #MIND THE ENDING DOT
+       templist = re.split(r"[Nn]ominating|[./n!]", postmessage) #MIND THE ENDING PUNCTUATION
        postmessage = templist[1] #now postmessage holds only "x from y"
        postmessage = re.sub('from','(',postmessage)+')'#postmessage is now x( y)
        item_list.append(postmessage)
