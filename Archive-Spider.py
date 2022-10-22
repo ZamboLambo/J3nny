@@ -2,19 +2,22 @@ from pyexpat import features
 from urllib.request import urlopen
 import requests
 from bs4 import BeautifulSoup
+from time import sleep
 import re
 import difflib
-from thread_parser import *
+from thread_parser import get_posts, handle_posts
+from google_api_handler import update_sheet
 
 thread_pattern = "mr-co"
-board = "co"
-sleep_minutes = 5
+board = "v"
+spreadsheet = "title"
+sleep_minutes = 1
 minreplies = 8
 
 #Gets first thread link from archive based on pattern
 #Pattern is thread title or if theres none, body of text
 #4chan archives automatically remove special characters, make it lowercase and replace spaces with -
-#return value is string or 0 if failed to find thread
+#return value is string or 0 if failed to find
 def get_thread(pattern,board): 
     html = urlopen("https://boards.4channel.org/" + board + "/archive")
     bsobj = BeautifulSoup(html, 'html.parser')
@@ -45,15 +48,15 @@ def remove_similar(file):
 
 def main():
     file_name = "Nominations_list.txt"
+    scraped = "scraped_threads.txt"
     while(True):
         
         try:
-            open("scraped_threads.txt")
+            open(scraped)
         except FileNotFoundError:
-            open("scraped_threads.txt",'x')
+            open(scraped,'x')
         finally:
-            threads_list = []
-            f = open("scraped_threads.txt","r+")
+            f = open(scraped,"r+")
             fields = []
             for line in f:
                 fields = line.split()
@@ -87,6 +90,7 @@ def main():
 
 
         remove_similar(file_name)
+        update_sheet(spreadsheet,file_name)
         print("Going off for " + str(sleep_minutes) + " minutes")
         sleep(sleep_minutes * 60)
 
@@ -95,6 +99,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
 
