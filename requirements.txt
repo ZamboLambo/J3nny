@@ -2,3 +2,4 @@ requests
 selenium
 lib2to3
 itertools
+ezsheets
