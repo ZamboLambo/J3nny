@@ -1,4 +1,5 @@
 from lib2to3.pgen2 import driver
+import string
 from time import sleep
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -23,10 +24,22 @@ def is_post_valid(post,minreplies):
             post_message = post.find_element(By.CLASS_NAME,'postMessage').text
             match = re.search("[Nn]ominating.*from.*[./n]",post_message)
             if match:
-                return True #fits the bill, passed all tests, valid post
+                if ( match.span()[1] - match.span()[0]) - (len("Nominating from ")) < 62:
+                    #checking if series + character name is too big
+                    #just in case someone tries giving the bot a whole copypasta
+                    #upper limit is considered the verbose combo that is 'Nominating ichiro "chiro" takagi from super robot monkey team hyperforce go!'
+                    return True #fits the bill, passed all tests, valid post
             else:
-                return False #doesnt have the pattern, invalid
+                return False #doesnt have the pattern or too long, invalid
 
+def convert_to_pattern(str):
+    #converts given string to valid pattern in archive links
+    str_ = str.lower()
+    table = str_.maketrans('','',string.punctuation)
+    str_ = str_.translate(table)
+    table = str_.maketrans(' ', '-')
+    str_ = str_.translate(table)
+    return str_
 
 def get_posts(link): #goes to link, returns list of post webelements
     options = webdriver.FirefoxOptions()
