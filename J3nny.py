@@ -43,7 +43,6 @@ def remove_similar(file):
         with open(file, "w",1,"utf-8") as f:
             for item in item_list:
                 f.write(item)
-    print(item_list)
     f.close()
 
 def main():
