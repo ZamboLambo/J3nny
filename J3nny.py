@@ -1,17 +1,17 @@
-from pyexpat import features
 from urllib.request import urlopen
-import requests
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.common.by import By
 from time import sleep
 import re
 import difflib
-from thread_parser import get_posts, handle_posts, convert_to_pattern
+from thread_parser import  handle_posts, convert_to_pattern
 from google_api_handler import update_sheet
 
 thread_pattern = convert_to_pattern(input("Insert thread pattern to look for: "))
 board = input("Insert board to scrape(letters only): ")
 spreadsheet = input("Insert the exact name of the google spreadsheet to use(if it does not already exist it will be created): ")
-sleep_minutes = 2
+sleep_minutes = 10
 minreplies = int(input("Insert the minimum number of replies needed for the post to be valid: "))
 
 #Gets first thread link from archive based on pattern
@@ -31,13 +31,13 @@ def get_thread(pattern,board):
 
 #takes filename, removes repeat text entries from it
 def remove_similar(file):
-    with open(file, "r") as f:
+    with open(file, "r",encoding="utf-8") as f:
         item_list = []
         item_list = f.readlines()
         for i,j in enumerate(item_list):
             for y in range(i+1,len(item_list)):
                 x = item_list[y]
-                if(difflib.SequenceMatcher(lambda a: a in " ",j,x).ratio() > 0.65):
+                if(difflib.SequenceMatcher(lambda a: a in " ",j,x).ratio() > 0.8):
                     item_list.pop(y)
                     break
         with open(file, "w",1,"utf-8") as f:
@@ -56,7 +56,7 @@ def main():
         except FileNotFoundError:
             open(scraped,'x')
         finally:
-            f = open(scraped,"r+")
+            f = open(scraped,"r+", encoding="utf-8")
             fields = []
             for line in f:
                 fields = line.split()
@@ -67,18 +67,26 @@ def main():
                 print("Beginning scrape routine of " + curr_thread)
                 f.write(curr_thread + "\n") #unscraped thread, append to list and scrape
                 f.close()
-                post_list = get_posts(curr_thread)
+
+                options = webdriver.FirefoxOptions()
+                options.add_argument("--headless")
+
+                driver = webdriver.Firefox(options=options)
+                driver.get(curr_thread)
+                sleep(5)
+                post_list = driver.find_elements(By.CLASS_NAME, 'postContainer')
                 character_list = handle_posts(post_list,minreplies)
                 
-
+                driver.close()
                 try:
                     open(file_name)
                 except FileNotFoundError:
                     open(file_name,'x')
                 finally:
-                    a = open(file_name,"a")
+                    a = open(file_name,"a", encoding="utf-8")
                     for item in character_list:
-                        a.write(item + "\n")
+                        if (item != "" and item != " " and len(item) < 100):
+                            a.write(item + "\n")
                     a.close()
 
                     print(str(len(character_list)) + " nominations added to nomination file.")
