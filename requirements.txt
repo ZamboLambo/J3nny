@@ -1,5 +1,5 @@
 requests
 selenium
-lib2to3
-itertools
+urllib
 ezsheets
+bs4
