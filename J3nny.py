@@ -1,36 +1,15 @@
 from urllib.request import urlopen
 from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.common.by import By
 from time import sleep
+from datetime import datetime
 import re
 import difflib
-from thread_parser import  handle_posts, convert_to_pattern
+from thread_parser import  *
 from google_api_handler import update_sheet
+import os
 
-thread_pattern = convert_to_pattern(input("Insert thread pattern to look for: "))
-board = input("Insert board to scrape(letters only): ")
-spreadsheet = input("Insert the exact name of the google spreadsheet to use(if it does not already exist it will be created): ")
-sleep_minutes = 10
-minreplies = int(input("Insert the minimum number of replies needed for the post to be valid: "))
-
-#Gets first thread link from archive based on pattern
-#Pattern is thread title or if theres none, body of text
-#4chan archives automatically remove special characters, make it lowercase and replace spaces with -
-#return value is string or 0 if failed to find
-def get_thread(pattern,board): 
-    html = urlopen("https://boards.4channel.org/" + board + "/archive")
-    bsobj = BeautifulSoup(html, 'html.parser')
-    match = str(bsobj.find(href = re.compile(pattern)))
-    cut1 = re.split(pattern,match)
-    cut2 = re.split("href=\"",cut1[0])
-    if len(cut2) > 1:
-        thread = "https://boards.4channel.org" + cut2[1]
-        return thread
-    return 0
-
-#takes filename, removes repeat text entries from it
 def remove_similar(file):
+    #takes filename, removes repeat text entries from it
     with open(file, "r",encoding="utf-8") as f:
         item_list = []
         item_list = f.readlines()
@@ -43,68 +22,75 @@ def remove_similar(file):
         with open(file, "w",1,"utf-8") as f:
             for item in item_list:
                 f.write(item)
+    #print(item_list)
     f.close()
 
+def grab_time():
+    #prompts for link, scrapes it and returns datetime obj
+    almosttime = input("Input itsalmo.st link(part after the .st/ only): ")
+    link = "https://itsalmo.st/" + almosttime
+    while(is404(link)):
+        almosttime = input("Invalid link, input again: ")
+        link = "https://itsalmo.st/" + almosttime
+    html = urlopen(link)
+    bsobj = BeautifulSoup(html, 'html.parser')
+    tag_contents = bsobj.find("script").string
+    #str containing time, format = 2023-03-15T16:03:33.619000Z
+    timestr = re.search("expires\":\"(.+)\"\,", tag_contents).group(1)
+    datestamp = datetime.fromisoformat(timestr.replace("Z","")) #out without Z
+    return datestamp
+    
+    
+
 def main():
+
+    thread_pattern = input("Insert thread pattern to look for: ")
+    board = input("Insert board to scrape(letters only): ")
+    spreadsheet = input("Insert the exact name of the google spreadsheet to use(if it does not already exist it will be created): ")
+    sleep_minutes = 8 * 60
+    minreplies = int(input("Insert the minimum number of replies needed for the post to be valid: "))
+    endstamp = grab_time()
+
     file_name = "Nominations_list.txt"
     scraped = "scraped_threads.txt"
-    while(True):
-        
-        try:
-            open(scraped)
-        except FileNotFoundError:
-            open(scraped,'x')
-        finally:
-            f = open(scraped,"r+", encoding="utf-8")
-            fields = []
-            for line in f:
-                fields = line.split()
 
-            curr_thread = get_thread(thread_pattern,board)
+    while endstamp >= datetime.utcnow():
+        if get_threadcatalog(thread_pattern, board):
+            thread = get_threadcatalog(thread_pattern, board)
+            while not(is404(thread) or isarchived(thread)):
+                page = scrape_thread(thread,file_name,minreplies)
+                if endstamp <= datetime.utcnow():
+                    
+                    xend = datetime.utcnow().strftime("%c")
+                    print("Timer over, program closed at " + xend)
+                    os.system("PAUSE")#windows specific but whatever
+                    return #end program
 
-            if curr_thread and curr_thread not in fields: 
-                print("Beginning scrape routine of " + curr_thread)
-                f.write(curr_thread + "\n") #unscraped thread, append to list and scrape
-                f.close()
-
-                options = webdriver.FirefoxOptions()
-                options.add_argument("--headless")
-
-                driver = webdriver.Firefox(options=options)
-                driver.get(curr_thread)
-                sleep(5)
-                post_list = driver.find_elements(By.CLASS_NAME, 'postContainer')
-                character_list = handle_posts(post_list,minreplies)
                 
-                driver.close()
-                try:
-                    open(file_name)
-                except FileNotFoundError:
-                    open(file_name,'x')
-                finally:
-                    a = open(file_name,"a", encoding="utf-8")
-                    for item in character_list:
-                        if (item != "" and item != " " and len(item) < 100):
-                            a.write(item + "\n")
-                    a.close()
+                update_sheet(spreadsheet,file_name)
+                remove_similar(file_name)
+                print("Pausing program for " + str(sleep_minutes / page) + " seconds. ")
+                print("-" * 30)
+                sleep(sleep_minutes / page)#higher the page, the faster we scrape
 
-                    print(str(len(character_list)) + " nominations added to nomination file.")
-
-
-            else:
-                f.close() #scraped already, close file and do nothing
-
-
+        scrape_archived_thread(convert_to_archivepattern(thread_pattern),board,scraped,file_name, minreplies)
 
         remove_similar(file_name)
         update_sheet(spreadsheet,file_name)
-        print("Going to sleep for " + str(sleep_minutes) + " minutes")
+        print("Pausing program for {sleep_minutes} minutes. ")
         print("-" * 30)
-        sleep(sleep_minutes * 60)
+        sleep(sleep_minutes)
 
 
-    return 0
+     #time over, end program
+    xend = datetime.utcnow().strftime("%c")
+    print("Timer over, program closed at " + xend)
+    os.system("PAUSE")
 
 if __name__ == "__main__":
     main()
+    
+
+
+   
 
