@@ -17,8 +17,7 @@ def update_sheet(sheet_name,file_name):
             for item in f:
                 list_.append(item)
         f.close()
-
-        ss.sheets[0].clear() 
+        
         ss.sheets[0].updateColumn(1,list_) 
         print("Spreadsheet(" + sheet_name + ") updated with info from file: " + file_name)
 
