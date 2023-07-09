@@ -7,6 +7,8 @@ from urllib.request import urlopen
 from urllib.error import HTTPError
 from bs4 import BeautifulSoup
 
+from selenium.webdriver.firefox.options import Options
+
 def get_threadarchived(pattern,board): 
     #Gets first thread link from archive based on pattern
     #Pattern is thread title or if theres none, body of text
@@ -22,10 +24,10 @@ def get_threadarchived(pattern,board):
         return thread
     return 0
 
-def is404(thread):
+def is404(link):
     #give a link, returns if its a 404 page
     try:
-        x = urlopen(thread)
+        urlopen(link)
     except HTTPError as e:
         if e.code == 404:
             return True
@@ -60,13 +62,13 @@ def get_threadcatalog(pattern,board):
 def find_nomination(post): 
     #tries to find a way to convert message to "character (series)"
     #returns message unaltered if failed to 
-    #delete multispaces leftover from deleting replies+newlines
+    #multispaces leftover from deleting replies+newlines
     if(re.search("( {3})",post)):
         temp = re.split(" {3}",post,1)
         post = temp[0]
 
 
-    nomination = re.search("(Nominating|nominating|NOMINATING|nominate).*(from|FROM).*(.|/n)",post)
+    nomination = re.search("(Nominating|nominating|NOMINATING|nominate).*(from|FROM).*(/n)",post)
     if nomination:
         x = nomination.group()
         x = re.sub("(Nominating|nominating|NOMINATING|nominate)",'',x)
@@ -150,7 +152,9 @@ def scrape_thread(thread,results,minreplies):
     options = webdriver.FirefoxOptions()
     options.add_argument("--headless")
 
+
     driver = webdriver.Firefox(options=options)
+    
     driver.get(thread)
     post_list = driver.find_elements(By.CLASS_NAME, 'postContainer')
     character_list = handle_posts(post_list,minreplies)
@@ -189,5 +193,4 @@ def scrape_archived_thread(pattern,board,scraped,results,minreplies):
             scrape_thread(curr_thread,results,minreplies)
 
 
-        else:
-            f.close() #scraped already, close file and do nothing
+        f.close() 
