@@ -13,10 +13,14 @@ A Python script to automate parts of the job of tourney hosts on 4channel.
 
 5 -Make sure you are logged into your google account.
 
-6 -Launch "j3nny.exe"
+6 -(Optional) Create a "blacklist.txt" file, with one of the denied characters per line. Format: character(media it's from)
+
+7 -Launch "j3nny.exe"
 
 # About the bot
 
- Inputs needed: thread pattern to look for, board, name of google spreadsheet, minimum replies and link of almo.st timer.
+ Inputs needed: thread pattern to look for, board, name of google spreadsheet, minimum replies and link of almo.st timer, optionally a blacklist text file.
+ 
  Runs until the current time is above the given timer or process is stopped.
+ 
  Updates the given spreadsheet with info scraped.
