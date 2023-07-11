@@ -3,7 +3,7 @@ A Python script to automate parts of the job of tourney hosts on 4channel.
 
 # Setting up
 
-1 -Download the current release "j3nny.dist.rar" and unzip it. (Compiled with nuitka, Windows only)
+1 -Download the current release "j3nny.dist.rar" and unzip it. (Standalone built with Pyinstaller, Windows only)
 
 2 -Download the google api credentials. (see: https://automatetheboringstuff.com/2e/chapter14/ ->"Obtaining Credentials and Token Files")
 
