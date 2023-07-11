@@ -141,12 +141,25 @@ def notice(lst: list):
     newlst[0] = insert_word(newlst[0], "J3NNY v" + VERSION)
     return newlst
 
+def log_date(filename):
+    with open(filename, 'w') as f:
+        date = datetime.today().isoformat()
+        f.write(date)
+
+def read_log(filename):
+    try: 
+        with open(filename, "r") as f:
+            date = f.readline()
+            #date = date.replace('(', '').replace(")", '').replace(',', '').replace(' ', '')
+            return datetime.fromisoformat(date)
+    except IOError:
+        return False
 
 
 
 def main():
 
-    thread_pattern = input("Insert thread pattern to look for: ")
+    thread_pattern = input("Insert thread pattern to look for(Case sensitive): ")
     board = input("Insert board to scrape(letters only): ")
     spreadsheet = input("Insert the name of the google spreadsheet to use(if it does not already exist it will be created): ")
     sleep_minutes = 8 * 60
@@ -155,11 +168,21 @@ def main():
 
     file_name = "Nominations_list.txt"
     scraped = "scraped_threads.txt"
+    datelog = "datelog.txt" #last day nominations was written to, to decide whether to clean it or not
     blacklst = get_blacklist()
-    clean_text(file_name)
-    note = notice(blacklst)
+    logged = read_log(datelog)
 
-    add_notice(note, spreadsheet)
+    if logged:
+        if not(logged.isocalendar()[1] == datetime.today().isocalendar()[1] \
+            and logged.year == datetime.today().year):
+            #dates arent within the same week
+            #assuming: no tourneys in same week
+            #ergo diferent tourney from before, clean noms
+            clean_text(file_name)
+
+
+
+    note = notice(blacklst)
 
 
     while endstamp >= datetime.utcnow():
@@ -174,9 +197,9 @@ def main():
                     os.system("PAUSE")#windows specific but whatever
                     return #end program
 
-                
-                update_sheet(spreadsheet,file_name)
-                remove_invalids(file_name)
+                remove_invalids(file_name, blacklst)
+                update_sheet(spreadsheet,file_name, note)
+                log_date("datelog.txt")
                 print(f"Pausing program for {sleep_minutes / page} seconds. ")
                 print("-" * 30)
                 sleep(sleep_minutes / page)#higher the page, the faster we scrape
@@ -184,7 +207,8 @@ def main():
         scrape_archived_thread(convert_to_archivepattern(thread_pattern),board,scraped,file_name, minreplies)
 
         remove_invalids(file_name, blacklst)
-        update_sheet(spreadsheet,file_name)
+        update_sheet(spreadsheet,file_name, note)
+        log_date("datelog.txt")
         print(f"Pausing program for {sleep_minutes / 60} minutes. ")
         print("-" * 30)
         sleep(sleep_minutes)
