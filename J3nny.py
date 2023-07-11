@@ -150,7 +150,6 @@ def read_log(filename):
     try: 
         with open(filename, "r") as f:
             date = f.readline()
-            #date = date.replace('(', '').replace(")", '').replace(',', '').replace(' ', '')
             return datetime.fromisoformat(date)
     except IOError:
         return False
