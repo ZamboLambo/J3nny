@@ -5,12 +5,39 @@ from datetime import datetime
 import re
 import difflib
 from thread_parser import  *
-from google_api_handler import update_sheet, add_notice
+from google_api_handler import update_sheet
 import os
 
-VERSION = "1.01" #for notice
+VERSION = "1.02" #for notice
 
-diffratio = 0.8 #constant of similarity to use with difflib
+diffratio = 0.7 #constant of similarity to use with difflib
+
+
+def is_similar(a: str,b: str):
+    if (re.search("\(.*\)", a) and re.search("\(.*\)", b)):
+        #abides to character(series)
+        series_a = re.findall("\(.*\)", a)[0]
+        series_a = series_a[1:-1]
+
+        series_b = re.findall("\(.*\)", b)[0]
+        series_b = series_b[1:-1]
+
+        if not(difflib.SequenceMatcher(a= series_a, b= series_b).ratio() > diffratio):
+            return False #diferent series, not same char
+        char_a = a.split('(', maxsplit=1)[0]
+        char_b = b.split('(', maxsplit=1)[0]
+        if (difflib.SequenceMatcher(a= char_a, b= char_b).ratio() > diffratio):
+            names_a = char_a.split()
+            names_b = char_b.split()
+            if(len(names_a) == len(names_b)):
+                for i in range(len(names_a)):
+                    if not(difflib.SequenceMatcher(a= names_a[i], b= names_b[i]).ratio() > diffratio):
+                        return False
+                return True          
+        else:
+            return False
+    else:
+        return difflib.SequenceMatcher(a= a, b= b).ratio() > diffratio
 
 
 def remove_invalids(file, blacklist):
@@ -18,18 +45,17 @@ def remove_invalids(file, blacklist):
     with open(file, "r",encoding="utf-8") as f:
         item_list = []
         item_list = f.readlines()
-        for i,j in enumerate(item_list):
+        for i in range(len(item_list)):
             #loop for removing repeated ones
             for y in range(i+1,len(item_list)):
-                x = item_list[y]
-                if(difflib.SequenceMatcher(lambda a: a in " ",j,x).ratio() > diffratio):
+                if(is_similar(item_list[i], item_list[y])):
                     item_list.pop(y)
                     break
         if blacklist:
             for i in range(len(item_list)):
             #loop for removing blacklisted
                 for x in blacklist:
-                    if(difflib.SequenceMatcher(None,item_list[i], x).ratio() > diffratio):
+                    if(is_similar(a= x, b= item_list[i])):
                         item_list.pop(i)
                         break
 
@@ -64,7 +90,7 @@ def get_blacklist():
     try:
         open("blacklist.txt")
     except FileNotFoundError:
-        print("blacklist.txt not found or empty! Proceeding without a blacklist.")
+        print("blacklist.txt not found! Proceeding without a blacklist.")
         return 0
     else:
         with open("blacklist.txt") as f:
@@ -150,6 +176,7 @@ def read_log(filename):
     try: 
         with open(filename, "r") as f:
             date = f.readline()
+            #date = date.replace('(', '').replace(")", '').replace(',', '').replace(' ', '')
             return datetime.fromisoformat(date)
     except IOError:
         return False
@@ -188,7 +215,6 @@ def main():
         if get_threadcatalog(thread_pattern, board):
             thread = get_threadcatalog(thread_pattern, board)
             while not(is404(thread) or isarchived(thread)):
-                page = scrape_thread(thread,file_name,minreplies)
                 if endstamp <= datetime.utcnow():
                     
                     xend = datetime.utcnow().strftime("%c")
@@ -196,6 +222,7 @@ def main():
                     os.system("PAUSE")#windows specific but whatever
                     return #end program
 
+                page = scrape_thread(thread,file_name,minreplies)
                 remove_invalids(file_name, blacklst)
                 update_sheet(spreadsheet,file_name, note)
                 log_date("datelog.txt")

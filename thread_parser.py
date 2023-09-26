@@ -61,23 +61,25 @@ def get_threadcatalog(pattern,board):
 
 def find_nomination(post): 
     #tries to find a way to convert message to "character (series)"
-    #returns message unaltered if failed to 
-    #multispaces leftover from deleting replies+newlines
-    if(re.search("( {3})",post)):
-        temp = re.split(" {3}",post,1)
-        post = temp[0]
+    #returns message almost unaltered if failed to 
 
-
-    nomination = re.search("(Nominating|nominating|NOMINATING|nominate).*(from|FROM).*(/n)",post)
+    post = post.strip() #remove trailing spaces
+    nomination = re.search("(Nominating|nominating|NOMINATING|nominate).*(from|FROM).*((\s\s$|[/.!?])|.$)",post)
+    
     if nomination:
-        x = nomination.group()
         x = re.sub("(Nominating|nominating|NOMINATING|nominate)",'',x)
         x = re.sub("(from |FROM )",'(',x)
+        if re.match("\s{2,}", x):
+            y = x.split("  ")
+            x = y[0]
         x = x + ')'
         return x
     from_ = re.search("(from|FROM)",post)
     if from_:
         x = re.sub("(from |FROM )",'(' ,post)
+        if re.match("\s{2,}", x):
+            y = x.split("  ")
+            x = y[0]
         x = x + ')'
         return x
     return post #no pattern, shove in sheet as is
@@ -86,15 +88,15 @@ def remove_replies(postmessage):
     replies = re.findall(">.*\d",postmessage)
     if(replies):
        x = re.sub(">.*\d",'',postmessage)
-       if(re.search("'('OP')'",x)):
-            x = re.sub("('('OP')'\n)",'',x)
+       if(re.search("\(OP\)",x)):
+            x = re.sub("\(OP\)",'',x)
        return x
     return postmessage
 
 def remove_newlines(postmessage):
     newlines = re.findall("\n",postmessage)
     if(newlines):
-        x = re.sub("\n", " ", postmessage)
+        x = re.sub("\n", "  ", postmessage)
         return x
     return postmessage
 
@@ -158,7 +160,10 @@ def scrape_thread(thread,results,minreplies):
     driver.get(thread)
     post_list = driver.find_elements(By.CLASS_NAME, 'postContainer')
     character_list = handle_posts(post_list,minreplies)
-    threadnumber = driver.find_element(By.CLASS_NAME, 'ts-page').text
+    if isarchived(thread):
+        threadnumber = 11
+    else:
+        threadnumber = driver.find_element(By.CLASS_NAME, 'ts-page').text
                 
     driver.close()
     try:
@@ -172,7 +177,7 @@ def scrape_thread(thread,results,minreplies):
                 a.write(item + "\n")
         a.close()
 
-        print(str(len(character_list)) + " nominations added to nomination file.")
+        print(str(len(character_list)) + " thread nominations added to nomination file.")
     return int(threadnumber)
 
 def scrape_archived_thread(pattern,board,scraped,results,minreplies):
