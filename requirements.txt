@@ -1,5 +1,5 @@
 requests
 selenium
 urllib
-ezsheets
+gspread
 bs4
