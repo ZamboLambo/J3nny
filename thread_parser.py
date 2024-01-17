@@ -67,7 +67,7 @@ def find_nomination(post):
     nomination = re.search("(Nominating|nominating|NOMINATING|nominate).*(from|FROM).*((\s\s$|[/.!?])|.$)",post)
     
     if nomination:
-        x = re.sub("(Nominating|nominating|NOMINATING|nominate)",'',nomination.group())
+        x = re.sub("(Nominating|nominating|NOMINATING|nominate)",'', nomination.group())
         x = re.sub("[/.!?]",'',x,1)
         x = re.sub("(from |FROM )",'(',x)
         if re.match("\s{2,}", x):
