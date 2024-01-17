@@ -32,8 +32,11 @@ def update_sheet(sheet_name, file_name, notice):
             lists.append(l)
         #character list done, add notice
 
-        for i in range(len(notice)):
-            lists[i].append(notice[i])
+        #if both noms list and new noms are small index will be out of range, 
+        # just skip notice if both are small
+        if len(lists) > len(notice):
+            for i in range(len(notice)):
+                lists[i].append(notice[i])
 
 
         sheet.clear()

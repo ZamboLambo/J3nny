@@ -178,8 +178,89 @@ def read_log(filename):
             date = f.readline()
             #date = date.replace('(', '').replace(")", '').replace(',', '').replace(' ', '')
             return datetime.fromisoformat(date)
-    except IOError:
+    except IOError:from fileinput import close
+import gspread
+import os
+import glob
+
+#handles all the dirty with google sheets
+
+
+def update_sheet(sheet_name, file_name, notice):
+    print("Updating spreadsheet...")
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+
+    os.chdir(dir_path)
+    credentials = glob.glob("*.json")
+    
+    client = gspread.oauth(credentials_filename= dir_path + '/' + credentials[0])
+    
+    try: client.open(sheet_name)
+
+    except gspread.SpreadsheetNotFound:
+        client.create(sheet_name)
+    finally:
+        sheet = client.open(sheet_name).sheet1
+        list = []
+        with open(file_name, 'r', encoding= 'utf-8') as f:
+            for item in f:
+                list.append(item)
+
+        lists = []
+        for i in list:
+            l = [i]
+            lists.append(l)
+        #character list done, add notice
+
+        #if both noms list and new noms are small index will be out of range, 
+        # just skip notice if both are small
+        if len(lists) > len(notice):
+            for i in range(len(notice)):
+                lists[i].append(notice[i])
+
+
+        sheet.clear()
+        sheet.update('A1', lists)
         return False
+
+def pause_timer(secs: int):
+    #pauses program and shows a timer while function active
+
+    if secs > 59:
+        min = int(secs / 60)
+        sec = secs - (int(secs / 60) * 60)
+    else:
+        min = 0
+        sec = secs
+
+    print(f"Pausing program for {min} minutes and {sec} seconds.")
+
+    while min or sec:
+        sys.stdout.write("\r")
+        sys.stdout.write("Remaining pause time: {:02d}:{:02d}".format(min, sec)) 
+        sys.stdout.flush()
+        time.sleep(1)
+        sec = sec - 1
+        if sec < 1:
+            min = min - 1
+            sec = 59
+            
+            if min < 0:
+                min = 0
+                sec = 0
+            if not(min == 0 and sec == 0):
+                sys.stdout.write("\r")
+                sys.stdout.write("Remaining pause time: {:02d}:00".format(min + 1)) 
+                sys.stdout.flush()
+            else:
+                sys.stdout.write("\r")
+                sys.stdout.write("Remaining pause time: 00:00") 
+                sys.stdout.flush()
+            time.sleep(1)
+
+    sys.stdout.write("\r")
+    print("Timer over.                              ")
+
 
 
 
@@ -191,6 +272,8 @@ def main():
     sleep_minutes = 8 * 60
     minreplies = int(input("Insert the minimum number of replies needed for the post to be valid: "))
     endstamp = grab_time()
+
+    #TODO: clean the gspread config before anything holy fuck I hate this
 
     file_name = "Nominations_list.txt"
     scraped = "scraped_threads.txt"
@@ -226,18 +309,16 @@ def main():
                 remove_invalids(file_name, blacklst)
                 update_sheet(spreadsheet,file_name, note)
                 log_date("datelog.txt")
-                print(f"Pausing program for {sleep_minutes / page} seconds. ")
+                pause_timer(int(sleep_minutes / page))#higher the page, the faster we scrape
                 print("-" * 30)
-                sleep(sleep_minutes / page)#higher the page, the faster we scrape
 
         scrape_archived_thread(convert_to_archivepattern(thread_pattern),board,scraped,file_name, minreplies)
 
         remove_invalids(file_name, blacklst)
         update_sheet(spreadsheet,file_name, note)
         log_date("datelog.txt")
-        print(f"Pausing program for {sleep_minutes / 60} minutes. ")
+        pause_timer(int(sleep_minutes))
         print("-" * 30)
-        sleep(sleep_minutes)
 
 
      #time over, end program
