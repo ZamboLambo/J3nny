@@ -8,7 +8,7 @@ from thread_parser import  *
 from google_api_handler import update_sheet
 import os
 
-VERSION = "1.3.0" #for notice
+VERSION = "1.1.0" #for notice
 
 diffratio = 0.7 #constant of similarity to use with difflib
 
