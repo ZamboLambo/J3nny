@@ -8,7 +8,7 @@ from thread_parser import  *
 from google_api_handler import update_sheet
 import os
 
-VERSION = "1.02" #for notice
+VERSION = "1.3.0" #for notice
 
 diffratio = 0.7 #constant of similarity to use with difflib
 
@@ -179,49 +179,6 @@ def read_log(filename):
             #date = date.replace('(', '').replace(")", '').replace(',', '').replace(' ', '')
             return datetime.fromisoformat(date)
     except IOError:from fileinput import close
-import gspread
-import os
-import glob
-
-#handles all the dirty with google sheets
-
-
-def update_sheet(sheet_name, file_name, notice):
-    print("Updating spreadsheet...")
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-
-    os.chdir(dir_path)
-    credentials = glob.glob("*.json")
-    
-    client = gspread.oauth(credentials_filename= dir_path + '/' + credentials[0])
-    
-    try: client.open(sheet_name)
-
-    except gspread.SpreadsheetNotFound:
-        client.create(sheet_name)
-    finally:
-        sheet = client.open(sheet_name).sheet1
-        list = []
-        with open(file_name, 'r', encoding= 'utf-8') as f:
-            for item in f:
-                list.append(item)
-
-        lists = []
-        for i in list:
-            l = [i]
-            lists.append(l)
-        #character list done, add notice
-
-        #if both noms list and new noms are small index will be out of range, 
-        # just skip notice if both are small
-        if len(lists) > len(notice):
-            for i in range(len(notice)):
-                lists[i].append(notice[i])
-
-
-        sheet.clear()
-        sheet.update('A1', lists)
-        return False
 
 def pause_timer(secs: int):
     #pauses program and shows a timer while function active
@@ -273,8 +230,6 @@ def main():
     minreplies = int(input("Insert the minimum number of replies needed for the post to be valid: "))
     endstamp = grab_time()
 
-    #TODO: clean the gspread config before anything holy fuck I hate this
-
     file_name = "Nominations_list.txt"
     scraped = "scraped_threads.txt"
     datelog = "datelog.txt" #last day nominations was written to, to decide whether to clean it or not
@@ -301,7 +256,7 @@ def main():
                 if endstamp <= datetime.utcnow():
                     
                     xend = datetime.utcnow().strftime("%c")
-                    print("Timer over, program closed at " + xend)
+                    print("Nominations end time reached, program closed at " + xend)
                     os.system("PAUSE")#windows specific but whatever
                     return #end program
 
@@ -312,7 +267,7 @@ def main():
                 pause_timer(int(sleep_minutes / page))#higher the page, the faster we scrape
                 print("-" * 30)
 
-        scrape_archived_thread(convert_to_archivepattern(thread_pattern),board,scraped,file_name, minreplies)
+        scrape_archived_thread(to_archivepattern(thread_pattern),board,scraped,file_name, minreplies)
 
         remove_invalids(file_name, blacklst)
         update_sheet(spreadsheet,file_name, note)
@@ -323,7 +278,7 @@ def main():
 
      #time over, end program
     xend = datetime.utcnow().strftime("%c")
-    print("Timer over, program closed at " + xend)
+    print("Nominations end time reached, program closed at " + xend)
     os.system("PAUSE")
 
 if __name__ == "__main__":

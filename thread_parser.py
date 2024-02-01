@@ -14,13 +14,13 @@ def get_threadarchived(pattern,board):
     #Pattern is thread title or if theres none, body of text
     #4chan archives automatically remove special characters, make it lowercase and replace spaces with -
     #return value is string or 0 if failed to find
-    html = urlopen("https://boards.4channel.org/" + board + "/archive")
+    html = urlopen("https://boards.4chan.org/" + board + "/archive")
     bsobj = BeautifulSoup(html, 'html.parser')
     match = str(bsobj.find(href = re.compile(pattern)))
     cut1 = re.split(pattern,match)
     cut2 = re.split("href=\"",cut1[0])
     if len(cut2) > 1:
-        thread = "https://boards.4channel.org" + cut2[1]
+        thread = "https://boards.4chan.org" + cut2[1]
         return thread
     return 0
 
@@ -44,7 +44,7 @@ def isarchived(thread):
 
 def get_threadcatalog(pattern,board):
     #goes through catalog, returns thread link or 0 if failed to find
-    html = urlopen("https://boards.4channel.org/" + board + "/catalog")
+    html = urlopen("https://boards.4chan.org/" + board + "/catalog")
     bsobj = BeautifulSoup(html, 'html.parser')
     script = bsobj.find_all("script")
     t = str(script[4])
@@ -56,12 +56,11 @@ def get_threadcatalog(pattern,board):
         return 0
     matches = re.findall("\"(\d+)\"", results)
     matches.reverse()
-    thread = "https://boards.4channel.org/" + board + "/thread/" + matches[1]
+    thread = "https://boards.4chan.org/" + board + "/thread/" + matches[1]
     return thread
 
 def find_nomination(post): 
     #tries to find a way to convert message to "character (series)"
-    #returns message almost unaltered if failed to 
 
     post = post.strip() #remove trailing spaces
     nomination = re.search("(Nominating|nominating|NOMINATING|nominate).*(from|FROM).*((\s\s$|[/.!?])|.$)",post)
@@ -118,7 +117,7 @@ def is_post_valid(post,minreplies):
                 return False #not enough replies, invalid
             return True
 
-def convert_to_archivepattern(str):
+def to_archivepattern(str):
     #converts given string to valid pattern in archive links
     str_ = str.lower()
     table = str_.maketrans('','',string.punctuation)
