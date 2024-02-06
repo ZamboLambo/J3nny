@@ -6,6 +6,8 @@ from selenium import webdriver
 from urllib.request import urlopen
 from urllib.error import HTTPError
 from bs4 import BeautifulSoup
+import urllib
+import requests
 
 from selenium.webdriver.firefox.options import Options
 
@@ -14,7 +16,7 @@ def get_threadarchived(pattern,board):
     #Pattern is thread title or if theres none, body of text
     #4chan archives automatically remove special characters, make it lowercase and replace spaces with -
     #return value is string or 0 if failed to find
-    html = urlopen("https://boards.4chan.org/" + board + "/archive")
+    html = requests.get("https://boards.4chan.org/" + board + "/archive").text
     bsobj = BeautifulSoup(html, 'html.parser')
     match = str(bsobj.find(href = re.compile(pattern)))
     cut1 = re.split(pattern,match)
@@ -27,7 +29,7 @@ def get_threadarchived(pattern,board):
 def is404(link):
     #give a link, returns if its a 404 page
     try:
-        urlopen(link)
+        requests.get(link)
     except HTTPError as e:
         if e.code == 404:
             return True
@@ -36,7 +38,7 @@ def is404(link):
 
 def isarchived(thread):
     #give link, returns if its an archived thread
-    html = urlopen(thread)
+    html = requests.get(thread).text
     soup = BeautifulSoup(html, 'html.parser')
     if soup.find("div",class_="closed"):
         return True
@@ -44,10 +46,10 @@ def isarchived(thread):
 
 def get_threadcatalog(pattern,board):
     #goes through catalog, returns thread link or 0 if failed to find
-    html = urlopen("https://boards.4chan.org/" + board + "/catalog")
+    html = requests.get("https://boards.4chan.org/" + board + "/catalog").text
     bsobj = BeautifulSoup(html, 'html.parser')
     script = bsobj.find_all("script")
-    t = str(script[4])
+    t = str(script[5])
     results = (re.search("(var catalog = {\"threads\":)(.*)(}})",t).group(2))
     old = results
     results = results.split(pattern)[0]
