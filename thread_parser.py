@@ -28,13 +28,11 @@ def get_threadarchived(pattern,board):
 
 def is404(link):
     #give a link, returns if its a 404 page
-    try:
-        requests.get(link)
-    except HTTPError as e:
-        if e.code == 404:
-            return True
-    else:
-        return False
+    response = requests.get(link)
+
+    if (response.status_code == 404):
+        return True
+    return False
 
 def isarchived(thread):
     #give link, returns if its an archived thread
