@@ -2,6 +2,8 @@ from tkinter import *
 from tkinter import ttk
 from tkinter.messagebox import showerror, showinfo
 import requests
+import threading
+from time import sleep
 
 def makeEntry(lname, master, infoText):
     lPat = ttk.Label(master, text=lname)
@@ -83,8 +85,16 @@ class Gui:
          foreground="green2", padding=10)
         self.stateInfo.grid()
 
-        funcReturn = func()
-        self.pauseTimer(funcReturn)
+        thread = threading.Thread(target=lambda: self.doWork(func), daemon=True)
+        thread.start()
+        #if paused is on and tkinter is closed via the top right x button the thread will live on
+
+
+    def doWork(self, func):
+        x = func()
+        while x > 0:
+            self.pauseTimer(x)
+            x = func()
 
 
     def pause(self):
@@ -104,15 +114,25 @@ class Gui:
                 sec = secs
             self.stateInfo.configure(text= "{:02d}:{:02d}".format(min, sec))
 
-            if self.paused.get():
-                self.window.wait_variable(self.paused)
+            while min or sec:
 
-            if secs > 0:
-                self.window.after(1000, self.pauseTimer, secs-1)
-
-
-
-    
+                if self.paused.get():
+                    self.window.wait_variable(self.paused)
+                self.stateInfo.configure(text= "{:02d}:{:02d}".format(min, sec))
+                sleep(1)
+                sec = sec - 1
+                if sec < 1:
+                    min = min - 1
+                    sec = 59
+                    
+                    if min < 0:
+                        min = 0
+                        sec = 0
+                    if not(min == 0 and sec == 0):
+                        self.stateInfo.configure(text= "{:02d}:{:02d}".format(min, sec))
+                    else:
+                        self.stateInfo.configure(text= "00:00")
+                    sleep(1)
 
     def run(self):
         self.window.mainloop()
