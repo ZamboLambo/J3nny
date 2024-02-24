@@ -2,7 +2,6 @@ from tkinter import *
 from tkinter import ttk
 from tkinter.messagebox import showerror, showinfo
 import requests
-import PIL as pil
 
 def makeEntry(lname, master, infoText):
     lPat = ttk.Label(master, text=lname)
@@ -14,10 +13,11 @@ def makeEntry(lname, master, infoText):
     return tEntry
 
 
-class gui:
+class Gui:
     #all needed outside class should be to properly init and call run()
 
-    def __init__(self):
+    def __init__(self, backFunction):
+        #only input: function to be used on the loop
         self.window = Tk()
         self.window.resizable(False, False)
 
@@ -40,9 +40,12 @@ class gui:
         "Link of the itsalmo.st timer to use. Part after the / only.")
 
 
-        self.startButton = ttk.Button(self.frm, text="Quit", command=lambda: self.validateRun()).grid(padx=20, pady=5)
+        self.startButton = ttk.Button(self.frm, text="Quit", command=lambda: self.validateRun(lambda: backFunction()))
+        self.startButton.grid(padx=20, pady=5)
 
-    def validateRun(self):
+
+
+    def validateRun(self, func):
         # if(
         #     requests.get(
         #         "https://boards.4chan.org/" + self.board[0].get() +"/catalog"
@@ -67,29 +70,57 @@ class gui:
         self.board[0]["state"] = 'disabled'
         self.threadPat[0]["state"] = 'disabled'
 
+        self.startButton.destroy()
 
         newfrm = ttk.Frame(self.window, padding=10)
+        self.paused = BooleanVar(value=False)
 
         newfrm.grid()
-        buttonStart = ttk.Button(newfrm)
-        buttonStart.grid(row=0, column=0)
+        self.buttonPause = ttk.Button(newfrm, command=self.pause, text="STOP")
+        self.buttonPause.grid()
 
-        stateInfo = ttk.Label(newfrm, text="I AM ERROR", background="black",
+        self.stateInfo = ttk.Label(newfrm, text="I AM ERROR", background="black",
          foreground="green2", padding=10)
-        stateInfo.grid(row=0, column=1)
+        self.stateInfo.grid()
+
+        funcReturn = func()
+        self.pauseTimer(funcReturn)
+
+
+    def pause(self):
+        if self.paused.get():
+            self.buttonPause.configure(text="STOP")
+        else:
+            self.buttonPause.configure(text="START")
+
+        self.paused.set(not(self.paused.get()))
+
+    def pauseTimer(self, secs):      
+            if secs > 59:
+                min = int(secs / 60)
+                sec = secs - (int(secs / 60) * 60)
+            else:
+                min = 0
+                sec = secs
+            self.stateInfo.configure(text= "{:02d}:{:02d}".format(min, sec))
+
+            if self.paused.get():
+                self.window.wait_variable(self.paused)
+
+            if secs > 0:
+                self.window.after(1000, self.pauseTimer, secs-1)
 
 
 
-        buttonStop = ttk.Button(newfrm)
-        buttonStop.grid(row=0, column=2)
-
-
+    
 
     def run(self):
         self.window.mainloop()
 
 
+def test():
+    return 5
 
-gui = gui()
+gui = Gui(test)
 
 gui.run()
