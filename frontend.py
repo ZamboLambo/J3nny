@@ -4,6 +4,7 @@ from tkinter.messagebox import showerror, showinfo
 import requests
 import threading
 from time import sleep
+from datetime import *
 
 def makeEntry(lname, master, infoText):
     lPat = ttk.Label(master, text=lname)
@@ -33,7 +34,7 @@ class Gui:
         "Letter or word of the board to scrape. ie: v, a, trash"),
 
         self.sheet = makeEntry("Google Sheet", self.frm,
-"Name of Google Sheets sheet to use, if inexistent it will be created. Uneeded if Google Sheets isn't set to be used."),
+"Name of Google Sheets sheet to use/override, if inexistent it will be created. Uneeded if Google Sheets isn't set to be used."),
 
         self.minRep = makeEntry("Minimum replies", self.frm,
         "Minimum replies for a nomination to be considered valid."),
@@ -81,18 +82,30 @@ class Gui:
         self.buttonPause = ttk.Button(newfrm, command=self.pause, text="STOP")
         self.buttonPause.grid()
 
+        self.end = datetime.now() + timedelta(hours=1)
+
         self.stateInfo = ttk.Label(newfrm, text="I AM ERROR", background="black",
          foreground="green2", padding=10)
         self.stateInfo.grid()
+        self.lock = threading.Lock()
 
         thread = threading.Thread(target=lambda: self.doWork(func), daemon=True)
         thread.start()
-        #if paused is on and tkinter is closed via the top right x button the thread will live on
+        
+        timerThread = threading.Thread(target=self.updateState, daemon=True)
+        timerThread.start()
 
+    def updateState(self):
+        while datetime.now() < self.end:
+            left = self.end - datetime.now()
+            self.stateInfo.configure(text=str(left).rpartition('.')[0])
+            sleep(1) # no need to update every microsecond if we're ignoring those
+        self.stateInfo.configure(text="OVER", foreground="red")
 
     def doWork(self, func):
         x = func()
-        while x > 0:
+        while datetime.now() < self.end:
+            
             self.pauseTimer(x)
             x = func()
 
@@ -100,45 +113,29 @@ class Gui:
     def pause(self):
         if self.paused.get():
             self.buttonPause.configure(text="STOP")
+            self.lock.release()
         else:
             self.buttonPause.configure(text="START")
 
         self.paused.set(not(self.paused.get()))
 
-    def pauseTimer(self, secs):      
-            if secs > 59:
-                min = int(secs / 60)
-                sec = secs - (int(secs / 60) * 60)
-            else:
-                min = 0
-                sec = secs
-            self.stateInfo.configure(text= "{:02d}:{:02d}".format(min, sec))
+    def pauseTimer(self, secs):
 
-            while min or sec:
+            while secs:
 
                 if self.paused.get():
-                    self.window.wait_variable(self.paused)
-                self.stateInfo.configure(text= "{:02d}:{:02d}".format(min, sec))
-                sleep(1)
-                sec = sec - 1
-                if sec < 1:
-                    min = min - 1
-                    sec = 59
-                    
-                    if min < 0:
-                        min = 0
-                        sec = 0
-                    if not(min == 0 and sec == 0):
-                        self.stateInfo.configure(text= "{:02d}:{:02d}".format(min, sec))
-                    else:
-                        self.stateInfo.configure(text= "00:00")
-                    sleep(1)
+                    self.stateInfo.configure(foreground="red")
+                    self.lock.acquire()
+                    self.stateInfo.configure(foreground="green2")
+                sleep(0.25)
+                secs = secs - 0.25
 
     def run(self):
         self.window.mainloop()
 
 
 def test():
+    print("Work was done")
     return 5
 
 gui = Gui(test)
