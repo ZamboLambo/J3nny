@@ -12,4 +12,5 @@ class Post:
         self.replies = [x.lstrip('>>') for x in re.findall(">>[0-9]+" , htmlSoup.find_next(name="blockquote").text)]
         self.text = removeReplies(htmlSoup.find_next(name="blockquote").text)
         self.yous = 0
+        self.hasImage = True if htmlSoup.find(class_="file") else False
 

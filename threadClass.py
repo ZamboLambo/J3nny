@@ -13,6 +13,15 @@ class chanThread:
     def refreshSoup(self):
         self.soup = BeautifulSoup(requests.get(self.link), 'html.parser')
 
+    def isAlive(self):
+        response = requests.get(self.link)
+        if (response.status_code == 404):
+            False
+        html = BeautifulSoup(response.raw, features='lxml')
+        if html.find("div",class_="closed"):
+            return False
+        return True
+
     def is404(self):
         response = requests.get(self.link)
 
@@ -45,8 +54,9 @@ class chanThread:
 
 
 
-test_link = "https://boards.4chan.org/int/thread/193871540"
+test_link = "https://boards.4chan.org/int/thread/194152481"
 
 thread = chanThread(test_link)
-print(thread.posts[1].replies[0])
-print(thread.posts[1].yous)
+print(thread.isAlive())
+print(thread.posts[0].hasImage)
+print(thread.posts[0].text)
