@@ -65,8 +65,8 @@ class Gui:
         "Link of the itsalmo.st timer to use. Part after the / only.")
 
 
-        self.startButton = ttk.Button(self.frm, image=self.startIco, command=lambda: self.validateRun(lambda: backFunction()))
-        self.startButton.grid(padx=20, pady=5)
+        self.startStopButton = ttk.Button(self.frm, image=self.startIco, command=lambda: self.validateRun(lambda: backFunction()))
+        self.startStopButton.grid(padx=20, pady=5)
 
 
 
@@ -95,19 +95,14 @@ class Gui:
         self.board[0]["state"] = 'disabled'
         self.threadPat[0]["state"] = 'disabled'
 
-        self.startButton.destroy()
-
-        newfrm = ttk.Frame(self.window, padding=10)
         self.paused = BooleanVar(value=False)
 
-        newfrm.grid()
-        self.buttonPause = ttk.Button(newfrm, command=self.pause, image=self.stopIco)
-        self.buttonPause.grid()
+        self.startStopButton.configure( command=self.pause, image=self.stopIco)
 
         self.end = datetime.now() + timedelta(hours=1)
 
-        self.stateInfo = ttk.Label(newfrm, text="I AM ERROR", background="black",
-         foreground="green2", padding=10)
+        self.stateInfo = ttk.Label(self.frm, text="I AM ERROR", background="black",
+         foreground="green2", padding=10, justify="center")
         self.stateInfo.grid()
         self.lock = threading.Lock()
 
@@ -134,10 +129,10 @@ class Gui:
 
     def pause(self):
         if self.paused.get():
-            self.buttonPause.configure(image=self.stopIco)
+            self.startStopButton.configure(image=self.stopIco)
             self.lock.release()
         else:
-            self.buttonPause.configure(image=self.startIco)
+            self.startStopButton.configure(image=self.startIco)
 
         self.paused.set(not(self.paused.get()))
 
