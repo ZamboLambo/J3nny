@@ -6,6 +6,9 @@ import threading
 from time import sleep
 from datetime import *
 
+
+from os import mkdir
+
 from images import *
 
 def makeEntry(lname, master, infoText):
@@ -54,6 +57,19 @@ class Gui:
         self.startStopButton.grid(padx=20, pady=5)
 
 
+    def lockEntry():
+        #for some reason all but almo got returned as a lenght 1 tuple...
+        self.almo["state"] = 'disabled'
+        self.minRep[0]["state"] = 'disabled'
+        self.sheet[0]["state"] = 'disabled'
+        self.board[0]["state"] = 'disabled'
+        self.threadPat[0]["state"] = 'disabled'
+    def mkhisdir():
+        try:
+            mkdir("DATA")
+        except FileExistsError:
+            pass
+
 
     def validateRun(self, func):
         # if(
@@ -73,12 +89,9 @@ class Gui:
         #     self.almo.config({"background": "Pink"})
         #     return False
 
-        #for some reason all but almo got returned as a lenght 1 tuple...
-        self.almo["state"] = 'disabled'
-        self.minRep[0]["state"] = 'disabled'
-        self.sheet[0]["state"] = 'disabled'
-        self.board[0]["state"] = 'disabled'
-        self.threadPat[0]["state"] = 'disabled'
+        self.lockEntry()
+
+        self.mkhisdir()
 
         self.paused = BooleanVar(value=False)
 
@@ -143,3 +156,5 @@ def test():
 gui = Gui(test)
 
 gui.run()
+
+
