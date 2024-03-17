@@ -5,7 +5,7 @@ def log(text):
 
         
 
-def scrapeSession(cataloglink):
+def scrapeSession(tPattern, board, sheet, minRep, connectGoogle):
 
 
     pass

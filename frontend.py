@@ -42,6 +42,12 @@ class Gui:
         self.frm = ttk.Frame(self.window, padding=10,)
         self.frm.grid()
 
+        self.connect = BooleanVar()
+        self.connect.set(True)
+
+        self.check = Checkbutton(self.frm, text="Connect to Google Sheets", variable=self.connect, pady=5)
+        self.check.grid()
+
         self.threadPat = makeEntry("Thread pattern", self.frm, 
 "A word or sentence present in the thread OP to be searched, must be unique. ie: Nominations"),
 
@@ -68,6 +74,7 @@ class Gui:
         self.sheet[0]["state"] = 'disabled'
         self.board[0]["state"] = 'disabled'
         self.threadPat[0]["state"] = 'disabled'
+        self.check["state"] = 'disabled'
         
     def mkhisdir(selh):
         try:
@@ -77,22 +84,31 @@ class Gui:
 
 
     def validateRun(self, func):
-        # if(
-        #     requests.get(
-        #         "https://boards.4chan.org/" + self.board[0].get() +"/catalog"
-        #     ).status_code == 404
-        # ):
-        #     showerror("Invalid input", "Invalid board.")
-        #     self.board[0].config({"background": "Pink"})
-        #     return False
-        # if(
-        #     requests.get(
-        #         "https://itsalmo.st/" + self.almo.get()
-        #     ).status_code == 404
-        # ):
-        #     showerror("Invalid input", "Invalid almo.st link.")
-        #     self.almo.config({"background": "Pink"})
-        #     return False
+        if(
+            requests.get(
+                "https://boards.4chan.org/" + self.board[0].get() +"/catalog"
+            ).status_code >= 400
+            or
+            requests.get(
+                "https://boards.4chan.org/" + self.board[0].get() +"/catalog"
+            ).status_code < 200
+        ):
+            showerror("Invalid input", "Invalid board.")
+            return
+        if(
+            requests.get(
+                "https://itsalmo.st/" + self.almo.get()
+            ).status_code < 200
+            or 
+            requests.get(
+                "https://itsalmo.st/" + self.almo.get()
+            ).status_code >= 400
+        ):
+            showerror("Invalid input", "Invalid almo.st link.")
+            return 
+        if(self.connect.get() and not(self.sheet[0].get())):
+            showerror("Invalid input", "If connecting to Google Sheets you must give a sheet name. Disable or input a name.")
+            return 
 
         self.lockEntry()
 
@@ -114,6 +130,7 @@ class Gui:
         
 
     def resetUI(self, backFunc):
+        self.check["state"] = 'normal'
         self.almo["state"] = 'normal'
         self.minRep[0]["state"] = 'normal'
         self.sheet[0]["state"] = 'normal'
@@ -138,11 +155,11 @@ class Gui:
         timerThread = threading.Thread(target=self.updateState, daemon=True)
         timerThread.start()
         
-        x = func()
+        x = func(self.threadPat, self.board, self.sheet, self.minRep, self.connect)
         while datetime.now() < self.end:
             try:
                 self.pauseTimer(x)
-                x = func()
+                x = func(self.threadPat, self.board, self.sheet, self.minRep, self.connect)
             except Exception as e:               
                 log("SCRAPE ERROR: " + repr(e))
                 log("LAST ERROR MESSAGE: " + str(e))
@@ -174,17 +191,3 @@ class Gui:
 
     def run(self):
         self.window.mainloop()
-
-
-def test():
-    print("Work was done")
-    x = randint(0, 110)
-    if x < 25:
-        raise RuntimeError
-    return 5
-
-gui = Gui(test)
-
-gui.run()
-
-
