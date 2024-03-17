@@ -6,10 +6,14 @@ import threading
 from time import sleep
 from datetime import *
 
+from random import randint
 
 from os import mkdir
+from sys import exit
 
 from images import *
+
+from scraper import log
 
 def makeEntry(lname, master, infoText):
     lPat = ttk.Label(master, text=lname)
@@ -26,6 +30,7 @@ class Gui:
 
     def __init__(self, backFunction):
         #only input: function to be used on the loop
+
         self.window = Tk()
         self.window.resizable(False, False)
 
@@ -53,18 +58,18 @@ class Gui:
         "Link of the itsalmo.st timer to use. Part after the / only.")
 
 
-        self.startStopButton = ttk.Button(self.frm, image=self.startIco, command=lambda: self.validateRun(lambda: backFunction()))
+        self.startStopButton = ttk.Button(self.frm, image=self.startIco, command=lambda: self.validateRun(backFunction))
         self.startStopButton.grid(padx=20, pady=5)
 
-
-    def lockEntry():
+    def lockEntry(self):
         #for some reason all but almo got returned as a lenght 1 tuple...
         self.almo["state"] = 'disabled'
         self.minRep[0]["state"] = 'disabled'
         self.sheet[0]["state"] = 'disabled'
         self.board[0]["state"] = 'disabled'
         self.threadPat[0]["state"] = 'disabled'
-    def mkhisdir():
+        
+    def mkhisdir(selh):
         try:
             mkdir("DATA")
         except FileExistsError:
@@ -104,25 +109,47 @@ class Gui:
         self.stateInfo.grid()
         self.lock = threading.Lock()
 
-        thread = threading.Thread(target=lambda: self.doWork(func), daemon=True)
-        thread.start()
+        self.thread = threading.Thread(target=lambda: self.doWork(func), daemon=True)
+        self.thread.start()
         
-        timerThread = threading.Thread(target=self.updateState, daemon=True)
-        timerThread.start()
+
+    def resetUI(self, backFunc):
+        self.almo["state"] = 'normal'
+        self.minRep[0]["state"] = 'normal'
+        self.sheet[0]["state"] = 'normal'
+        self.board[0]["state"] = 'normal'
+        self.threadPat[0]["state"] = 'normal'
+        self.startStopButton.configure(command=lambda: self.validateRun(backFunc))
+        self.startStopButton.configure(image=self.startIco)
+        self.stateInfo.destroy()
 
     def updateState(self):
         while datetime.now() < self.end:
             left = self.end - datetime.now()
-            self.stateInfo.configure(text=str(left).rpartition('.')[0])
+            try: 
+                self.stateInfo.configure(text=str(left).rpartition('.')[0])
+            except TclError:
+                exit()
             sleep(1) # no need to update every microsecond if we're ignoring those
         self.stateInfo.configure(text="OVER", foreground="red")
 
     def doWork(self, func):
+
+        timerThread = threading.Thread(target=self.updateState, daemon=True)
+        timerThread.start()
+        
         x = func()
         while datetime.now() < self.end:
-            
-            self.pauseTimer(x)
-            x = func()
+            try:
+                self.pauseTimer(x)
+                x = func()
+            except Exception as e:               
+                log("SCRAPE ERROR: " + repr(e))
+                log("LAST ERROR MESSAGE: " + str(e))
+                showerror("ERROR", "During bot execution an unexpected error has happened. Error message saved on log_file. Current run terminated.")
+                self.resetUI(func)
+                exit()
+                
 
 
     def pause(self):
@@ -151,6 +178,9 @@ class Gui:
 
 def test():
     print("Work was done")
+    x = randint(0, 110)
+    if x < 25:
+        raise RuntimeError
     return 5
 
 gui = Gui(test)
