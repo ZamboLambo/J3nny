@@ -1,7 +1,7 @@
 
 def log(text):
     with open("log_file.txt", "a") as f:
-        f.write(text)
+        f.write(text + '\n')
 
         
 
