@@ -10,6 +10,7 @@ from random import randint
 
 from os import mkdir
 from sys import exit
+import glob
 
 from images import *
 
@@ -24,6 +25,16 @@ def makeEntry(lname, master, infoText):
     tEntry.grid(padx=20, pady=5)
     return tEntry
 
+
+def grab_time(almosttime):
+    link = "https://itsalmo.st/" + almosttime
+    html = urlopen(link)
+    bsobj = BeautifulSoup(html, 'html.parser')
+    tag_contents = bsobj.find("script").string
+    #str containing time, format = 2023-03-15T16:03:33.619000Z
+    timestr = re.search("expires\":\"(.+)\"\,", tag_contents).group(1)
+    datestamp = datetime.fromisoformat(timestr.replace("Z","")) #out without Z
+    return datestamp
 
 class Gui:
     #all needed outside class should be to properly init and call run()
@@ -75,13 +86,6 @@ class Gui:
         self.board[0]["state"] = 'disabled'
         self.threadPat[0]["state"] = 'disabled'
         self.check["state"] = 'disabled'
-        
-    def mkhisdir(selh):
-        try:
-            mkdir("DATA")
-        except FileExistsError:
-            pass
-
 
     def validateRun(self, func):
         if(
@@ -109,16 +113,17 @@ class Gui:
         if(self.connect.get() and not(self.sheet[0].get())):
             showerror("Invalid input", "If connecting to Google Sheets you must give a sheet name. Disable or input a name.")
             return 
+        if(self.connect.get() and not(glob.glob("*.json"))):
+            showerror("ERROR", "Client secret json not found. It is needed to connect with Google Sheet's API.")
+            return
 
         self.lockEntry()
-
-        self.mkhisdir()
 
         self.paused = BooleanVar(value=False)
 
         self.startStopButton.configure( command=self.pause, image=self.stopIco)
 
-        self.end = datetime.now() + timedelta(hours=1)
+        self.end = grab_time(self.almo.get())
 
         self.stateInfo = ttk.Label(self.frm, text="I AM ERROR", background="black",
          foreground="green2", padding=10, justify="center")

@@ -2,42 +2,40 @@ from fileinput import close
 import gspread
 import os
 import glob
+from scraper import log
+from time import sleep
 
 #handles all the dirty with google sheets
 
 
-def update_sheet(sheet_name, file_name, notice):
-    print("Updating spreadsheet...")
-    dir_path = os.path.dirname(os.path.realpath(__file__))
+def updateSheet(sheetName, list_):
+    #turn list into list of lists because gspread demands that format
+    list_ = [[x] for x in list_]
 
-    os.chdir(dir_path)
+
+    log("Updating spreadsheet...")
+    dir_path = os.getcwd()
     credentials = glob.glob("*.json")
+    client = gspread.oauth(credentials_filename= dir_path + '/' + credentials[0],
+                            authorized_user_filename= dir_path + "/authorized_user.json")
     
-    client = gspread.oauth(credentials_filename= dir_path + '/' + credentials[0])
-    
-    try: client.open(sheet_name)
+    try: client.open(sheetName)
 
     except gspread.SpreadsheetNotFound:
-        client.create(sheet_name)
+        client.create(sheetName)
     finally:
-        sheet = client.open(sheet_name).sheet1
-        list = []
-        with open(file_name, 'r', encoding= 'utf-8') as f:
-            for item in f:
-                list.append(item)
+        sheet = client.open(sheetName).sheet1
+        sheet.update(list_)
+        sleep(0.250)
 
-        lists = []
-        for i in list:
-            l = [i]
-            lists.append(l)
-        #character list done, add notice
+#sleeping is just for safeness case to not extrapolate how much google allows to call the API
+def readSheet(sheetName):
+    dir_path = os.getcwd()
+    credentials = glob.glob("*.json")
+    client = gspread.oauth(credentials_filename= dir_path + '/' + credentials[0],
+                            authorized_user_filename= dir_path + "/authorized_user.json")
+    sheet = client.open(sheetName).sheet1
+    sleep(0.250)
+    return sheet.col_values(1)
 
-        #if both noms list and new noms are small index will be out of range, 
-        # just skip notice if both are small
-        if len(lists) > len(notice):
-            for i in range(len(notice)):
-                lists[i].append(notice[i])
-
-
-        sheet.clear()
-        sheet.update('A1', lists)
+print(readSheet("test"))

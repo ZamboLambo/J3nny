@@ -1,7 +1,6 @@
 from bs4 import BeautifulSoup
 import requests
 import re
-from postClass import Post
 import pandas as pd
 
 
@@ -36,11 +35,16 @@ def htmlToPd(htmlSoup):
 
 
 class chanThread:
-    def __init__(self, link: str):
-        self.link = link
-        self.soup = BeautifulSoup(requests.get(link).content, 'html.parser')
-        self.posts = htmlToPd(self.soup)
-        self.setYous()
+    def __init__(self, link: str = "", dataFrame: pd.DataFrame = None ):
+        if link != "":
+            self.link = link
+            self.soup = BeautifulSoup(requests.get(link).content, 'html.parser')
+            self.posts = htmlToPd(self.soup)
+            self.setYous()
+        else:
+            self.link = None
+            self.posts = dataFrame
+            self.soup = None
 
     def refreshSoup(self):
         self.soup = BeautifulSoup(requests.get(self.link), 'html.parser')
@@ -65,12 +69,4 @@ class chanThread:
         self.posts = htmlToPd(self.soup)
         self.setYous()
 
-            
-
-
-
-
-test_link = "https://boards.4chan.org/int/thread/194709668"
-
-thread = chanThread(test_link)
-print(thread.posts)
+        
