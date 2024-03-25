@@ -33,6 +33,8 @@ def htmlToPd(htmlSoup):
     )
     return df
 
+def flatten(xss):
+    return [x for xs in xss for x in xs]
 
 class chanThread:
     def __init__(self, link: str = "", dataFrame: pd.DataFrame = None ):
@@ -58,11 +60,15 @@ class chanThread:
             return False
         return True
 
-    def setYous(self):
-        for item in self.posts.index:
-            for n in range(item, self.posts.last_valid_index()):
-                if self.posts.iloc[item]['id'] in self.posts.iloc[n]['replies']:
-                    self.posts.at[item,'youCount'] += 1
+    def setYous(self): #THE most time costly part of this whole deal wtf
+        replyList = self.posts["replies"].to_list()
+        replyList = flatten(replyList)
+        for i in self.posts.index:
+            id = self.posts.at[i, "id"]
+            yous = 0
+            for id in replyList:
+                yous += 1
+            self.posts.at[i, "youCount"] = yous
 
     def refreshSelf(self):
         self.refreshSoup()

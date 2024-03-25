@@ -188,6 +188,7 @@ def scrapeSession(tPattern, board, sheet, minRep, connectGoogle):
 
     log("===============SCRAPE START=======================")
     isNewThread = False
+    start = time.time()
     if archiveExists:
         lastNumber = archiveExists[0].rstrip(".csv")
         tryLink = f"https://boards.4chan.org/{board}/thread/{lastNumber}"
@@ -218,6 +219,7 @@ def scrapeSession(tPattern, board, sheet, minRep, connectGoogle):
     if "nomination" not in current.posts.columns:
         current.posts.insert(loc=6, column="nomination", value=pd.NA)
     
+    print(f"It took: {time.time() - start}")
     currentLink = current.link
     current = current.posts.apply(validate, axis=1, args=(minRep,))
 
