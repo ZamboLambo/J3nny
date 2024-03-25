@@ -52,7 +52,7 @@ class chanThread:
     def isAlive(self):
         response = requests.get(self.link)
         if (response.status_code >= 400 or response.status_code < 200):
-            False
+            return False
         html = BeautifulSoup(response.raw, features='lxml')
         if html.find("div",class_="closed"):
             return False

@@ -160,11 +160,13 @@ class Gui:
         timerThread = threading.Thread(target=self.updateState, daemon=True)
         timerThread.start()
         
-        x = func(self.threadPat, self.board, self.sheet, self.minRep, self.connect)
+        x = func(self.threadPat[0].get(), self.board[0].get(), self.sheet[0].get(),
+                 self.minRep[0].get(), self.connect.get())
         while datetime.now() < self.end:
             try:
                 self.pauseTimer(x)
-                x = func(self.threadPat, self.board, self.sheet, self.minRep, self.connect)
+                x = func(self.threadPat[0].get(), self.board[0].get(), self.sheet[0].get(),
+                 self.minRep[0].get(), self.connect.get())
             except Exception as e:               
                 log("SCRAPE ERROR: " + repr(e))
                 log("LAST ERROR MESSAGE: " + str(e))

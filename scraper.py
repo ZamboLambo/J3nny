@@ -9,6 +9,10 @@ from ast import literal_eval
 import numpy as np
 import os
 
+import time
+
+from google_api_handler import updateSheet, readSheet
+
 def log(text):
     with open("log_file.txt", "a") as f:
         f.write(text + '\n')
@@ -180,11 +184,10 @@ def validate(row, minRep):
     return row
 
 def scrapeSession(tPattern, board, sheet, minRep, connectGoogle):
-    defaultSleep = 8 * 60
     archiveExists = glob.glob('*.csv')
 
     log("===============SCRAPE START=======================")
-
+    isNewThread = False
     if archiveExists:
         lastNumber = archiveExists[0].rstrip(".csv")
         tryLink = f"https://boards.4chan.org/{board}/thread/{lastNumber}"
@@ -192,11 +195,12 @@ def scrapeSession(tPattern, board, sheet, minRep, connectGoogle):
 
         if not current.isAlive():
 
+            isNewThread = True
             last = findLatest(tPattern, board)
             if not last:
                 log("No new thread found")
                 log("===============SCRAPE END=========================")
-                return 30 #sleep 30 seconds
+                return 10 #sleep 10 seconds
             log(f"Found thread: {last}")
 
             current = chanThread(link=last)
@@ -208,43 +212,171 @@ def scrapeSession(tPattern, board, sheet, minRep, connectGoogle):
             return 30 #sleep 30 seconds
         current = chanThread(link=last)
         log(f"Found thread: {last}")
-
     log("Scraped successfully")
-
-    if "status" not in current.columns:
-        current.insert(loc=5, column="status", value="")
-
-    if "nomination" not in current.columns:
-        current.insert(loc=6, column="nomination", value=pd.NA)
-
-    current = current.apply(validate, axis=1, args=(minRep,))
-
+    if "status" not in current.posts.columns:
+        current.posts.insert(loc=5, column="status", value="")
+    if "nomination" not in current.posts.columns:
+        current.posts.insert(loc=6, column="nomination", value=pd.NA)
+    
+    currentLink = current.link
+    current = current.posts.apply(validate, axis=1, args=(minRep,))
 
 
     if archiveExists:
-        archive = pd.read_csv(archiveExists[0], converters={ "replies" : literal_eval, "youCount" : np.int64}, encoding='utf-8', on_bad_lines='skip')
+        archive = pd.read_csv(archiveExists[0], converters={ "replies" : literal_eval, "youCount" : np.int64, "threadNumber" : np.int64}, encoding='utf-8', on_bad_lines='skip')
 
         log(f"READ: {archiveExists[0]} ")
 
+        if isNewThread:
+            lastNu = archive["threadNumber"].iat[-1]
+
+            current.insert(loc=7, column="threadNumber", value=lastNu+1)
+        else:
+            lastNu = archive["threadNumber"].iat[-1]
+            current.insert(loc=7, column="threadNumber", value=lastNu)
+
         archive.hasFile = archive.hasFile.replace({"True": True, "False": False})
-        final = chanThread(dataFrame=latestWithArchive(current.posts, archive))
+        final = chanThread(dataFrame=latestWithArchive(current, archive))
         os.unlink(os.path.join(os.getcwd(),f'{archiveExists[0]}'))
     else:
-        final = chanThread(dataFrame=current.posts)
+        final = chanThread(dataFrame=current)
+        if "threadNumber" not in final.posts.columns:
+            final.posts.insert(loc=7, column="threadNumber", value=0)
 
-    threadNumber = current.link.split('/')
+    threadNumber = currentLink.split('/')
     threadNumber.reverse()
     threadNumber = threadNumber[0]
 
-    final.to_csv(f"{threadNumber}.csv", index=False,encoding='utf-8') #save it in full
+    final.posts.to_csv(f"{threadNumber}.csv", index=False,encoding='utf-8', float_format='%.0f') #save it in full
     log(f"WROTE: {threadNumber}.csv")
 
     nominationList = []
-
-    for index, row in current.iterrows():
-        if not(row["status"].find("ALLOW") == -1):
-            nominationList.append(row["nomination"])
+    grouped = final.posts.groupby("threadNumber")
     
+    for i in range(grouped.ngroups):
+        if((grouped.get_group(i)["nomination"]).any()):
+            nominationList.append(f"Thread {i}")
+        df = grouped.get_group(i)
+        for index, row in df.iterrows():
+            if not(row["status"].find("ALLOW") == -1):
+                nominationList.append(row["nomination"])
+    nominationList = [x for x in nominationList if str(x) != 'nan']
     ############## Final step, comunicate with sheets(if on), compare with current nom list, handle deviations
-    
+    if connectGoogle:
+        response = readSheet(sheetName=sheet)
+    else:
+        try:
+            with open("NOMINATIONS.txt", "r") as file:
+                response = file.readlines()
+        except OSError:
+            response = []
+    if response:
+        for i in range(len(response)):
+            response[i] = response[i].rstrip()
+            
+        log("GOT RESPONSE")
+        listOfListsResponse = []
+        for index, item in enumerate(response):
+            temp = []
+            if re.fullmatch("Thread \d{1,2}", item): #don't think we're ever getting >99 threads but just change this if needed
+                for i in response[index+1:]:
+                    if re.fullmatch("Thread \d{1,2}",i):
+                        break
+                    else:
+                        temp.append(i)
+            if len(temp):
+                listOfListsResponse.append(temp)
+        #same process for internal list, assuming no outside editing
+        #they should be nigh identical, only internal's last thread list being longer
+        listOfListsinter = []
+        for index,item in enumerate(nominationList):
+            temp = []
+            if re.fullmatch("Thread \d{1,2}", item): 
+                for i in nominationList[index+1:]:
+                    if re.fullmatch("Thread \d{1,2}",i):
+                        break
+                    else:
+                        temp.append(i)
+            if len(temp):
+                listOfListsinter.append(temp)
 
+        for i in range(len(listOfListsResponse)-1): 
+        #safe to assume both have the same amount of threads
+        #TODO: the last added threads must be compared diferently
+        #thus minus 1
+            intern_ = sorted(listOfListsinter[i])
+            outside = sorted(listOfListsResponse[i])
+
+            if outside != intern_:
+                if len(outside) > len(intern_):
+                    #outside bigger than internal
+                    #something got add, 
+                    diference = len(outside) - len(intern_)
+                    sliced = outside[diference:]
+                    #add to intern
+                    for item in sliced:
+                        listOfListsinter[i].append(item)
+                    #change csv where item is to
+                    #have status HOST_ALLOWED
+                    temp = pd.read_csv(f"{threadNumber}.csv")
+                    for item in sliced:
+                        temp.loc[temp["nomination"] == item, "status"] = "HOST_ALLOWED"
+                    temp.to_csv(f"{threadNumber}.csv",mode="w+", float_format='%.0f')
+
+                elif len(outside) < len(intern_):
+                    #outside smaller than internal
+                    #something got denied,
+                    diference = len(intern_) - len(outside)
+                    sliced = outside[diference:]
+                    #remove from internautismi miku painos
+                    listOfListsinter[i] = intern_[:diference] 
+                    #change csv where item is to 
+                    #have status HOST_DENIED
+                    temp = pd.read_csv(f"{threadNumber}.csv")
+                    for item in sliced:
+                        temp.loc[temp["nomination"] == item, "status"] = "HOST_DENIED"
+                    temp.to_csv(f"{threadNumber}.csv",mode="w+",float_format='%.0f')
+                else:
+                    #something got edited
+                    #edit in internal too
+                    edited = []
+                    original = []
+                    for i in range(len(outside)):
+                        if outside[i] != intern_[i]:
+                            original.append(intern_[i])
+                            edited.append(outside[i])
+                            intern_[i] = outside[i]
+
+                    listOfListsinter[i] = intern_
+                    #change csv nomination to this
+                    temp = pd.read_csv(f"{threadNumber}.csv")
+                    for i in range(len(original)):
+                        temp.loc[temp["nomination"] == original[i], "nomination"] = edited[i]
+                    temp.to_csv(f"{threadNumber}.csv",mode="w+", float_format='%.0f')
+        nominationList = []
+        for i in range(len(listOfListsinter)):
+            if len(listOfListsinter[i]):
+                nominationList.append(f"->Thread {i}")
+            for it in listOfListsinter[i]:
+                nominationList.append(it)
+    #at last, after all the checking
+    #write to file/sheet
+    if connectGoogle:
+        updateSheet(nominationList)
+    else:
+        try:
+            with open("NOMINATIONS.txt", 'w') as f:
+                f.write("\n".join(map(str, nominationList)))
+        except OSError:
+            with open("NOMINATIONS.txt", 'x') as f:
+                f.write("\n".join(map(str, nominationList)))
+    log("===============SCRAPE END=========================")
+    return 30 #sleep 30 secs
+
+start = time.time()
+scrapeSession("Workweek edish", "int", None, 2, False)
+end = time.time()
+print(f"Full function took: {end - start}")
+os.remove("NOMINATIONS.txt")
+os.remove("log_file.txt")
+os.remove(glob.glob("*.csv")[0])
