@@ -63,12 +63,13 @@ class chanThread:
     def setYous(self): #THE most time costly part of this whole deal wtf
         replyList = self.posts["replies"].to_list()
         replyList = flatten(replyList)
-        for i in self.posts.index:
+        countList = []
+        for i in range(self.posts["id"].size):
             id = self.posts.at[i, "id"]
-            yous = 0
-            for id in replyList:
-                yous += 1
-            self.posts.at[i, "youCount"] = yous
+            yous = sum(1 for x in replyList if x == id)
+            countList.append(yous)
+        self.posts["youCount"] = countList
+        print(self.posts["youCount"])
 
     def refreshSelf(self):
         self.refreshSoup()
