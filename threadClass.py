@@ -50,22 +50,17 @@ class chanThread:
     def __init__(self, link: str = "", dataFrame: pd.DataFrame = None ):
         if link != "":
             self.link = link
-            start = time.time()
 
             relevantInfo = SoupStrainer("div",{"class": "board"})
             self.soup = BeautifulSoup(requests.get(link).content, 'lxml', parse_only=relevantInfo)
 
 
-            print(time.time() - start)
             self.posts = htmlToPd(self.soup)
             self.setYous()
         else:
             self.link = None
             self.posts = dataFrame
             self.soup = None
-
-    def refreshSoup(self):
-        self.soup = BeautifulSoup(requests.get(self.link), 'html.parser')
 
     def isAlive(self):
         response = requests.get(self.link)
@@ -80,10 +75,5 @@ class chanThread:
         replyList = self.posts["replies"].to_list()
         replyList = flatten(replyList)
         self.posts["youCount"] = crossCompare(self.posts["id"], replyList)
-
-    def refreshSelf(self):
-        self.refreshSoup()
-        self.posts = htmlToPd(self.soup)
-        self.setYous()
 
         
