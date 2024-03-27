@@ -1,9 +1,10 @@
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, SoupStrainer
 import requests
 import re
 import pandas as pd
-
-
+import numpy as np
+import lxml
+import time
 
 def removeReplies(postmessage):
         sub = re.sub(">>[0-9]+",' ',postmessage)
@@ -36,11 +37,26 @@ def htmlToPd(htmlSoup):
 def flatten(xss):
     return [x for xs in xss for x in xs]
 
+def crossCompare(listA, listB):
+    #given A and B 1d lists return a list with count of 
+    #A shape with count of how many A[i] items are in B
+    x = np.array(listA)
+    comparator = np.array(listB)
+    comparator = np.broadcast_to(comparator,(x.shape[0],comparator.shape[0]))
+    
+    return  np.sum(x == np.rollaxis(comparator,1), axis=0).tolist()
+
 class chanThread:
     def __init__(self, link: str = "", dataFrame: pd.DataFrame = None ):
         if link != "":
             self.link = link
-            self.soup = BeautifulSoup(requests.get(link).content, 'html.parser')
+            start = time.time()
+
+            relevantInfo = SoupStrainer("div",{"class": "board"})
+            self.soup = BeautifulSoup(requests.get(link).content, 'lxml', parse_only=relevantInfo)
+
+
+            print(time.time() - start)
             self.posts = htmlToPd(self.soup)
             self.setYous()
         else:
@@ -60,16 +76,10 @@ class chanThread:
             return False
         return True
 
-    def setYous(self): #THE most time costly part of this whole deal wtf
+    def setYous(self): 
         replyList = self.posts["replies"].to_list()
         replyList = flatten(replyList)
-        countList = []
-        for i in range(self.posts["id"].size):
-            id = self.posts.at[i, "id"]
-            yous = sum(1 for x in replyList if x == id)
-            countList.append(yous)
-        self.posts["youCount"] = countList
-        print(self.posts["youCount"])
+        self.posts["youCount"] = crossCompare(self.posts["id"], replyList)
 
     def refreshSelf(self):
         self.refreshSoup()
