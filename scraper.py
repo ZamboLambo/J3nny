@@ -8,6 +8,9 @@ from threadClass import chanThread
 from ast import literal_eval
 import numpy as np
 import os
+import lxml
+import json
+import ast
 
 import time
 
@@ -23,7 +26,7 @@ def getThreadArchived(pattern,board):
     #4chan archives automatically remove special characters, make it lowercase and replace spaces with -
     #return value is string or 0 if failed to find
     html = requests.get("https://boards.4chan.org/" + board + "/archive").text
-    bsobj = BeautifulSoup(html, 'html.parser')
+    bsobj = BeautifulSoup(html, 'lxml')
     match = str(bsobj.find(href = re.compile(pattern)))
     cut1 = re.split(pattern,match)
     cut2 = re.split("href=\"",cut1[0])
@@ -35,10 +38,7 @@ def getThreadArchived(pattern,board):
 def getThreadcatalog(pattern,board):
     #goes through catalog, returns thread link or 0 if failed to find
     html = requests.get("https://boards.4chan.org/" + board + "/catalog").text
-    bsobj = BeautifulSoup(html, 'html.parser')
-    script = bsobj.find_all("script")
-    t = str(script[5])
-    results = (re.search("(var catalog = {\"threads\":)(.*)(}})",t).group(2))
+    results = (re.search("(var catalog = {\"threads\":)(.*)(}})",html).group(2))
     old = results
     results = results.split(pattern)[0]
     if old == results:
@@ -169,18 +169,14 @@ def validate(row, minRep):
         #main validation proc
         if not row["hasFile"]:
             row["status"] = "NO_IMAGE_FILE"
-            log(f"POST[{row.id}] SET OUT: NO FILE")
             return row
-        if row["youCount"] < minRep:
+        if row["youCount"] > minRep:
             row["status"] = "BELOW_YOU_LIMIT"
-            log(f"POST[{row.id}] SET OUT: TOO FEW YOUS")
             return row
         if len(row["nomination"]) > 120:
             row["status"] = "NOM_TOO_LONG"
-            log(f"POST[{row.id}] SET OUT: NOMINATION TOO LONG")
             return row
         row["status"] = "ALLOWED"
-        log(f"POST[{row.id}] SET IN: ALLOWED")
     return row
 
 def scrapeSession(tPattern, board, sheet, minRep, connectGoogle):
@@ -188,7 +184,6 @@ def scrapeSession(tPattern, board, sheet, minRep, connectGoogle):
 
     log("===============SCRAPE START=======================")
     isNewThread = False
-    start = time.time()
     if archiveExists:
         lastNumber = archiveExists[0].rstrip(".csv")
         tryLink = f"https://boards.4chan.org/{board}/thread/{lastNumber}"
@@ -201,7 +196,7 @@ def scrapeSession(tPattern, board, sheet, minRep, connectGoogle):
             if not last:
                 log("No new thread found")
                 log("===============SCRAPE END=========================")
-                return 10 #sleep 10 seconds
+                return
             log(f"Found thread: {last}")
 
             current = chanThread(link=last)
@@ -210,7 +205,7 @@ def scrapeSession(tPattern, board, sheet, minRep, connectGoogle):
         if not last:
             log("No new thread found")
             log("===============SCRAPE END=========================")
-            return 30 #sleep 30 seconds
+            return
         current = chanThread(link=last)
         log(f"Found thread: {last}")
     log("Scraped successfully")
@@ -219,7 +214,6 @@ def scrapeSession(tPattern, board, sheet, minRep, connectGoogle):
     if "nomination" not in current.posts.columns:
         current.posts.insert(loc=6, column="nomination", value=pd.NA)
     
-    print(f"It took: {time.time() - start}")
     currentLink = current.link
     current = current.posts.apply(validate, axis=1, args=(minRep,))
 
@@ -288,31 +282,37 @@ def scrapeSession(tPattern, board, sheet, minRep, connectGoogle):
                         temp.append(i)
             if len(temp):
                 listOfListsResponse.append(temp)
-        #same process for internal list, assuming no outside editing
-        #they should be nigh identical, only internal's last thread list being longer
-        listOfListsinter = []
-        for index,item in enumerate(nominationList):
-            temp = []
-            if re.fullmatch("Thread \d{1,2}", item): 
-                for i in nominationList[index+1:]:
-                    if re.fullmatch("Thread \d{1,2}",i):
-                        break
-                    else:
-                        temp.append(i)
-            if len(temp):
-                listOfListsinter.append(temp)
+        #same process for internal list of last sent response, assuming no outside editing
+        #they should be identical
+        try:
+            with open("A_expected.json","r") as f:
+                lastResponse = json.loads(f.read())
+                lastResponse = ast.literal_eval(lastResponse)
+        except OSError:
+            lastResponse = None
 
-        for i in range(len(listOfListsResponse)-1): 
-        #safe to assume both have the same amount of threads
-        #TODO: the last added threads must be compared diferently
-        #thus minus 1
-            intern_ = sorted(listOfListsinter[i])
-            outside = sorted(listOfListsResponse[i])
+        listOfListsinter = []
+
+        if lastResponse:
+            for index,item in enumerate(lastResponse):
+                temp = []
+                if re.fullmatch("Thread \d{1,2}", item): 
+                    for i in lastResponse[index+1:]:
+                        if re.fullmatch("Thread \d{1,2}",i):
+                            break
+                        else:
+                            temp.append(i)
+                if len(temp):
+                    listOfListsinter.append(temp)
+
+        for index in range(len(listOfListsResponse)):
+            intern_ = sorted(listOfListsinter[index])
+            outside = sorted(listOfListsResponse[index])
 
             if outside != intern_:
                 if len(outside) > len(intern_):
                     #outside bigger than internal
-                    #something got add, 
+                    #something got added 
                     diference = len(outside) - len(intern_)
                     sliced = outside[diference:]
                     #add to intern
@@ -349,7 +349,7 @@ def scrapeSession(tPattern, board, sheet, minRep, connectGoogle):
                             edited.append(outside[i])
                             intern_[i] = outside[i]
 
-                    listOfListsinter[i] = intern_
+                    listOfListsinter[index] = intern_
                     #change csv nomination to this
                     temp = pd.read_csv(f"{threadNumber}.csv")
                     for i in range(len(original)):
@@ -361,6 +361,10 @@ def scrapeSession(tPattern, board, sheet, minRep, connectGoogle):
                 nominationList.append(f"->Thread {i}")
             for it in listOfListsinter[i]:
                 nominationList.append(it)
+
+    jsonList = json.dumps(nominationList)
+    with open('A_expected.json', 'w') as f:
+        json.dump(jsonList, f)
     #at last, after all the checking
     #write to file/sheet
     if connectGoogle:
@@ -373,12 +377,4 @@ def scrapeSession(tPattern, board, sheet, minRep, connectGoogle):
             with open("NOMINATIONS.txt", 'x') as f:
                 f.write("\n".join(map(str, nominationList)))
     log("===============SCRAPE END=========================")
-    return 30 #sleep 30 secs
-
-start = time.time()
-scrapeSession("Workweek edish", "int", None, 2, False)
-end = time.time()
-print(f"Full function took: {end - start}")
-os.remove("NOMINATIONS.txt")
-os.remove("log_file.txt")
-os.remove(glob.glob("*.csv")[0])
+    return

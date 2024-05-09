@@ -50,9 +50,9 @@ class chanThread:
     def __init__(self, link: str = "", dataFrame: pd.DataFrame = None ):
         if link != "":
             self.link = link
-
             relevantInfo = SoupStrainer("div",{"class": "board"})
             self.soup = BeautifulSoup(requests.get(link).content, 'lxml', parse_only=relevantInfo)
+
 
 
             self.posts = htmlToPd(self.soup)

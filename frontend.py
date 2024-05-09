@@ -5,6 +5,8 @@ import requests
 import threading
 from time import sleep
 from datetime import *
+from bs4 import BeautifulSoup
+from dateutil.parser import parse
 
 from random import randint
 
@@ -28,12 +30,13 @@ def makeEntry(lname, master, infoText):
 
 def grab_time(almosttime):
     link = "https://itsalmo.st/" + almosttime
-    html = urlopen(link)
-    bsobj = BeautifulSoup(html, 'html.parser')
+    html = requests.get(link)
+    bsobj = BeautifulSoup(html.content, 'html.parser')
     tag_contents = bsobj.find("script").string
     #str containing time, format = 2023-03-15T16:03:33.619000Z
     timestr = re.search("expires\":\"(.+)\"\,", tag_contents).group(1)
-    datestamp = datetime.fromisoformat(timestr.replace("Z","")) #out without Z
+    print(timestr)
+    datestamp = datetime.fromtimestamp(parse(timestr).timestamp()) #out without Z
     return datestamp
 
 class Gui:
@@ -88,6 +91,9 @@ class Gui:
         self.check["state"] = 'disabled'
 
     def validateRun(self, func):
+        if not(self.almo.get and self.board[0].get):
+            showerror("Missing input", "Empty input.")
+            return
         if(
             requests.get(
                 "https://boards.4chan.org/" + self.board[0].get() +"/catalog"
@@ -164,9 +170,9 @@ class Gui:
                  self.minRep[0].get(), self.connect.get())
         while datetime.now() < self.end:
             try:
-                self.pauseTimer(x)
-                x = func(self.threadPat[0].get(), self.board[0].get(), self.sheet[0].get(),
-                 self.minRep[0].get(), self.connect.get())
+                self.pauseTimer(15.00)
+                func(self.threadPat[0].get(), self.board[0].get(), self.sheet[0].get(),
+                self.minRep[0].get(), self.connect.get())
             except Exception as e:               
                 log("SCRAPE ERROR: " + repr(e))
                 log("LAST ERROR MESSAGE: " + str(e))
