@@ -6,7 +6,6 @@ import threading
 from time import sleep
 from datetime import *
 from bs4 import BeautifulSoup
-from dateutil.parser import parse
 
 from random import randint
 
