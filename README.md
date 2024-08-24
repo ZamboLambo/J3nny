@@ -15,4 +15,9 @@ A Python script to automate parts of the job of tourney hosts on 4channel.
 
 # Editing
 
-Edit the output file directly and the bot will consider that on the next scrape.
+Pause the bot and directly edit the output file, be it a local one or a google sheet, then unpause.
+
+Only do one of the following per edit:
+- adding a character(s)
+- removing a character(s)
+- editing a nomination

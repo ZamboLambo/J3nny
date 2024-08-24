@@ -11,18 +11,21 @@ import requests
 
 from selenium.webdriver.firefox.options import Options
 
+parser = 'html.parser'
+chan = "https://boards.4chan.org/"
+
 def get_threadarchived(pattern,board): 
     #Gets first thread link from archive based on pattern
     #Pattern is thread title or if theres none, body of text
     #4chan archives automatically remove special characters, make it lowercase and replace spaces with -
     #return value is string or 0 if failed to find
-    html = requests.get("https://boards.4chan.org/" + board + "/archive").text
-    bsobj = BeautifulSoup(html, 'html.parser')
+    html = requests.get(chan + board + "/archive").text
+    bsobj = BeautifulSoup(html, parser)
     match = str(bsobj.find(href = re.compile(pattern)))
     cut1 = re.split(pattern,match)
     cut2 = re.split("href=\"",cut1[0])
     if len(cut2) > 1:
-        thread = "https://boards.4chan.org" + cut2[1]
+        thread = chan + cut2[1]
         return thread
     return 0
 
@@ -37,15 +40,15 @@ def is404(link):
 def isarchived(thread):
     #give link, returns if its an archived thread
     html = requests.get(thread).text
-    soup = BeautifulSoup(html, 'html.parser')
+    soup = BeautifulSoup(html, parser)
     if soup.find("div",class_="closed"):
         return True
     return False
 
 def get_threadcatalog(pattern,board):
     #goes through catalog, returns thread link or 0 if failed to find
-    html = requests.get("https://boards.4chan.org/" + board + "/catalog").text
-    bsobj = BeautifulSoup(html, 'html.parser')
+    html = requests.get(chan + board + "/catalog").text
+    bsobj = BeautifulSoup(html, parser)
     script = bsobj.find_all("script")
     t = str(script[5])
     results = (re.search("(var catalog = {\"threads\":)(.*)(}})",t).group(2))
@@ -56,7 +59,7 @@ def get_threadcatalog(pattern,board):
         return 0
     matches = re.findall("\"(\d+)\"", results)
     matches.reverse()
-    thread = "https://boards.4chan.org/" + board + "/thread/" + matches[1]
+    thread = chan + board + "/thread/" + matches[1]
     return thread
 
 def find_nomination(post): 

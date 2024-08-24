@@ -7,7 +7,7 @@ import lxml
 import time
 
 def removeReplies(postmessage):
-        sub = re.sub(">>[0-9]+",' ',postmessage)
+        sub = re.sub(">>\d+",' ',postmessage)
         return sub
 
 def htmlToPd(htmlSoup):
@@ -19,7 +19,7 @@ def htmlToPd(htmlSoup):
     hasImage = []
     for item in htmlPosts:
         ids.append(item['id'].lstrip('pc'))
-        replies.append([x.lstrip('>>') for x in re.findall(">>[0-9]+" , item.find_next(name="blockquote").text)])
+        replies.append([x.lstrip('>>') for x in re.findall(">>\d+" , item.find_next(name="blockquote").text)])
         texts.append(removeReplies(item.find_next(name="blockquote").text))
         hasImage.append((True if item.find(class_="file") else False))
         yous.append(0)

@@ -1,6 +1,6 @@
 from tkinter import *
 from tkinter import ttk
-from tkinter.messagebox import showerror, showinfo
+from tkinter.messagebox import showerror, showinfo, askyesnocancel
 import requests
 import threading
 from time import sleep
@@ -9,13 +9,15 @@ from bs4 import BeautifulSoup
 
 from random import randint
 
-from os import mkdir
+from os import mkdir, unlink, path, getcwd
 from sys import exit
 import glob
 
 from images import *
 
 from scraper import log
+
+almoLink = "https://itsalmo.st/"
 
 def makeEntry(lname, master, infoText):
     lPat = ttk.Label(master, text=lname)
@@ -28,14 +30,13 @@ def makeEntry(lname, master, infoText):
 
 
 def grab_time(almosttime):
-    link = "https://itsalmo.st/" + almosttime
+    link = almoLink + almosttime
     html = requests.get(link)
     bsobj = BeautifulSoup(html.content, 'html.parser')
     tag_contents = bsobj.find("script").string
     #str containing time, format = 2023-03-15T16:03:33.619000Z
     timestr = re.search("expires\":\"(.+)\"\,", tag_contents).group(1)
-    print(timestr)
-    datestamp = datetime.fromtimestamp(parse(timestr).timestamp()) #out without Z
+    datestamp = datetime.fromisoformat(timestr.replace("Z","+00:00")) #out without Z
     return datestamp
 
 class Gui:
@@ -46,6 +47,7 @@ class Gui:
 
         self.window = Tk()
         self.window.resizable(False, False)
+        self.window.title("J3nny")
 
         self.startIco = startIcon()
         self.stopIco = pauseIcon()
@@ -90,6 +92,18 @@ class Gui:
         self.check["state"] = 'disabled'
 
     def validateRun(self, func):
+        archiveExists = glob.glob('*.csv')
+
+        if(archiveExists):
+            answer = askyesnocancel(title="WARNING", message="Files with nomination info detected. Delete it before proceeding?")
+            if(answer == None):
+                return
+            if(answer):
+                unlink(path.join(getcwd(),f'{archiveExists[0]}'))
+                unlink(path.join(getcwd(),"A_expected.json"))
+                unlink(path.join(getcwd(),"log_file.txt"))
+
+
         if not(self.almo.get and self.board[0].get):
             showerror("Missing input", "Empty input.")
             return
@@ -102,15 +116,15 @@ class Gui:
                 "https://boards.4chan.org/" + self.board[0].get() +"/catalog"
             ).status_code < 200
         ):
-            showerror("Invalid input", "Invalid board.")
+            showerror("Invalid input detected", "Invalid board.")
             return
         if(
             requests.get(
-                "https://itsalmo.st/" + self.almo.get()
+                almoLink + self.almo.get()
             ).status_code < 200
             or 
             requests.get(
-                "https://itsalmo.st/" + self.almo.get()
+                almoLink + self.almo.get()
             ).status_code >= 400
         ):
             showerror("Invalid input", "Invalid almo.st link.")
@@ -151,8 +165,8 @@ class Gui:
         self.stateInfo.destroy()
 
     def updateState(self):
-        while datetime.now() < self.end:
-            left = self.end - datetime.now()
+        while datetime.now().astimezone() < self.end:
+            left = self.end - datetime.now().astimezone()
             try: 
                 self.stateInfo.configure(text=str(left).rpartition('.')[0])
             except TclError:
@@ -164,14 +178,23 @@ class Gui:
 
         timerThread = threading.Thread(target=self.updateState, daemon=True)
         timerThread.start()
+
+        sleepyTime = 60
         
-        x = func(self.threadPat[0].get(), self.board[0].get(), self.sheet[0].get(),
-                 self.minRep[0].get(), self.connect.get())
-        while datetime.now() < self.end:
+        func(self.threadPat[0].get(), self.board[0].get(), self.sheet[0].get(),
+                 int(self.minRep[0].get()), self.connect.get())
+        while datetime.now().astimezone() < self.end:
             try:
-                self.pauseTimer(15.00)
-                func(self.threadPat[0].get(), self.board[0].get(), self.sheet[0].get(),
-                self.minRep[0].get(), self.connect.get())
+                self.pauseTimer(sleepyTime)
+
+                #no pausing mid execution
+                self.startStopButton.configure(state="disabled")
+
+                sleepyTime = func(self.threadPat[0].get(), self.board[0].get(), self.sheet[0].get(),
+                int(self.minRep[0].get()), self.connect.get())
+
+                self.startStopButton.configure(state="normal")
+
             except Exception as e:               
                 log("SCRAPE ERROR: " + repr(e))
                 log("LAST ERROR MESSAGE: " + str(e))
