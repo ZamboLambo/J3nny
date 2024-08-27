@@ -246,11 +246,12 @@ def handleDeviations(intern_, outside, listOfListsinter, threadNumber, index):
             #have status HOST_ALLOWED
             temp = pd.read_csv(f"{threadNumber}.csv", sep=';')
             for item in sliced:
+                chara = re.findall(".+(?=\()")[0]
+                series = re.findall("(?<=\().+(?=\))")[0]
                 #looks for the exact nomination given
                 #ergo if it doesnt fit what the robot thinks
                 #then the status is never truly changed
-                #TODO: make smarter nomination search to use here
-                temp.loc[temp["nomination"] == item, "status"] = "HOST_ALLOWED"
+                temp.loc[temp["nomination"].str.match(f"(?<={chara}).*(?={series})"), "status"] = "HOST_ALLOWED"
             temp.to_csv(f"{threadNumber}.csv",mode="w+", float_format='%.0f', index=False, sep=';')
 
         elif len(outside) < len(intern_):
