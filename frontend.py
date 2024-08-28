@@ -52,10 +52,18 @@ class Gui:
         self.startIco = startIcon()
         self.stopIco = pauseIcon()
         
-
+        self.statuses = [
+            j3nnyActiveIcon(),
+            j3nnySleepIcon(),
+            j3nnyStoppIcon()
+        ]
 
         self.frm = ttk.Frame(self.window, padding=10,)
         self.frm.grid()
+
+        self.statusDisplay = Label(self.frm, image=self.statuses[1])
+
+        self.statusDisplay.grid()
 
         self.connect = BooleanVar()
         self.connect.set(True)
@@ -173,8 +181,10 @@ class Gui:
                 exit()
             sleep(1) # no need to update every microsecond if we're ignoring those
         self.stateInfo.configure(text="OVER", foreground="red")
+        self.statusDisplay.configure(image= self.statuses[1])
 
     def doWork(self, func):
+        self.statusDisplay.configure(image= self.statuses[0])
 
         timerThread = threading.Thread(target=self.updateState, daemon=True)
         timerThread.start()
@@ -200,16 +210,20 @@ class Gui:
                 log("LAST ERROR MESSAGE: " + str(e))
                 showerror("ERROR", "During bot execution an unexpected error has happened. Error message saved on log_file. Current run terminated.")
                 self.resetUI(func)
+                self.statusDisplay.configure(image= self.statuses[1])
                 exit()
+        
                 
 
 
     def pause(self):
         if self.paused.get():
             self.startStopButton.configure(image=self.stopIco)
+            self.statusDisplay.configure(image= self.statuses[2])
             self.lock.release()
         else:
             self.startStopButton.configure(image=self.startIco)
+            self.statusDisplay.configure(image= self.statuses[0])
 
         self.paused.set(not(self.paused.get()))
 
