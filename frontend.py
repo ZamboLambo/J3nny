@@ -110,6 +110,7 @@ class Gui:
                 unlink(path.join(getcwd(),f'{archiveExists[0]}'))
                 unlink(path.join(getcwd(),"A_expected.json"))
                 unlink(path.join(getcwd(),"log_file.txt"))
+                unlink(path.join(getcwd(),"NOMINATIONS.txt"))
 
 
         if not(self.almo.get and self.board[0].get):
@@ -126,17 +127,17 @@ class Gui:
         ):
             showerror("Invalid input detected", "Invalid board.")
             return
-        if(
-            requests.get(
-                almoLink + self.almo.get()
-            ).status_code < 200
-            or 
-            requests.get(
-                almoLink + self.almo.get()
-            ).status_code >= 400
-        ):
-            showerror("Invalid input", "Invalid almo.st link.")
-            return 
+        # if(
+        #     requests.get(
+        #         almoLink + self.almo.get()
+        #     ).status_code < 200
+        #     or 
+        #     requests.get(
+        #         almoLink + self.almo.get()
+        #     ).status_code >= 400
+        # ):
+        #     showerror("Invalid input", "Invalid almo.st link.")
+        #     return 
         if(self.connect.get() and not(self.sheet[0].get())):
             showerror("Invalid input", "If connecting to Google Sheets you must give a sheet name. Disable or input a name.")
             return 
@@ -150,7 +151,7 @@ class Gui:
 
         self.startStopButton.configure( command=self.pause, image=self.stopIco)
 
-        self.end = grab_time(self.almo.get())
+        self.end = datetime.now() + timedelta(hours=2) #grab_time(self.almo.get())
 
         self.stateInfo = ttk.Label(self.frm, text="I AM ERROR", background="black",
          foreground="green2", padding=10, justify="center")
@@ -173,8 +174,8 @@ class Gui:
         self.stateInfo.destroy()
 
     def updateState(self):
-        while datetime.now().astimezone() < self.end:
-            left = self.end - datetime.now().astimezone()
+        while datetime.now().astimezone() < self.end.astimezone():
+            left = self.end.astimezone() - datetime.now().astimezone()
             try: 
                 self.stateInfo.configure(text=str(left).rpartition('.')[0])
             except TclError:
@@ -193,7 +194,7 @@ class Gui:
         
         func(self.threadPat[0].get(), self.board[0].get(), self.sheet[0].get(),
                  int(self.minRep[0].get()), self.connect.get())
-        while datetime.now().astimezone() < self.end:
+        while datetime.now().astimezone() < self.end.astimezone():
             try:
                 self.pauseTimer(sleepyTime)
 
@@ -219,11 +220,9 @@ class Gui:
     def pause(self):
         if self.paused.get():
             self.startStopButton.configure(image=self.stopIco)
-            self.statusDisplay.configure(image= self.statuses[2])
             self.lock.release()
         else:
             self.startStopButton.configure(image=self.startIco)
-            self.statusDisplay.configure(image= self.statuses[0])
 
         self.paused.set(not(self.paused.get()))
 
@@ -233,8 +232,10 @@ class Gui:
 
                 if self.paused.get():
                     self.stateInfo.configure(foreground="red")
+                    self.statusDisplay.configure(image= self.statuses[2])
                     self.lock.acquire()
                     self.stateInfo.configure(foreground="green2")
+                    self.statusDisplay.configure(image= self.statuses[0])
                 sleep(0.25)
                 secs = secs - 0.25
 

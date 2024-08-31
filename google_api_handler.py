@@ -5,7 +5,9 @@ import glob
 from time import sleep
 
 #handles all the dirty with google sheets
-
+def log(text):
+    with open("log_file.txt", "a") as f:
+        f.write(text + '\n')
 
 def updateSheet(sheetName, list_):
     #turn list into list of lists because gspread demands that format

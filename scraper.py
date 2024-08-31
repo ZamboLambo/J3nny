@@ -189,6 +189,9 @@ def validate(row, minRep):
         if len(row["nomination"]) > 120:
             row["status"] = "NOM_TOO_LONG"
             return row
+        if len(row["nomination"]) < 2:
+            row["status"] = "NOM_TOO_SHORT"
+            return row
         row["status"] = "ALLOWED"
     return row
 
@@ -205,7 +208,7 @@ def scrapeSession(tPattern, board, sheet, minRep, connectGoogle):
     nomFile = "NOMINATIONS.txt"
     
     ############## Final step, comunicate with sheets(if on), compare with current nom list, handle deviations
-    response = connectOrReadOutsideFile(connectGoogle, nomFile)
+    response = connectOrReadOutsideFile(connectGoogle, nomFile, sheet)
     if response:
         listOfListsResponse, listOfListsinter = formatThread(response, [])
         
@@ -370,7 +373,7 @@ def lastResponseToInternalList(lastResponse, listOfListsinter, threadRegex):
         if len(temp):
             listOfListsinter.append(temp)    
 
-def connectOrReadOutsideFile(connectGoogle, nomFile):
+def connectOrReadOutsideFile(connectGoogle, nomFile, sheet):
     if connectGoogle:
         response = readSheet(sheetName=sheet)
     else:
