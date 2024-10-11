@@ -76,7 +76,7 @@ class Gui:
         self.check = Checkbutton(self.frm, text="Connect to Google Sheets", variable=self.connect, pady=5)
         self.check.grid()
 
-        self.threadPat = makeEntry("Thread pattern", self.frm, 
+        self.threadPat = makeEntry("Thread identifier", self.frm, 
 "A word or sentence present in the thread OP to be searched, must be unique. ie: Nominations"),
 
         self.board = makeEntry("Board",  self.frm, 
