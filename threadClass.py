@@ -20,7 +20,7 @@ def htmlToPd(htmlSoup):
     for item in htmlPosts:
         ids.append(item['id'].lstrip('pc'))
         replies.append([x.lstrip('>>') for x in re.findall(">>\d+" , item.find_next(name="blockquote").text)])
-        texts.append(removeReplies(item.find_next(name="blockquote").text))
+        texts.append(removeReplies(item.find_next(name="blockquote").text).replace(";", ""))
         hasImage.append((True if item.find(class_="file") else False))
         yous.append(0)
     df = pd.DataFrame(
@@ -67,7 +67,7 @@ class chanThread:
         if (response.status_code >= 400 or response.status_code < 200):
             return False
         html = BeautifulSoup(response.raw, features='lxml')
-        if html.find("div",class_="closed"):
+        if html.find_all("div",class_="closed"):
             return False
         return True
 

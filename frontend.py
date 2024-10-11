@@ -6,7 +6,7 @@ import threading
 from time import sleep
 from datetime import *
 from bs4 import BeautifulSoup
-
+from google_api_handler import isSheetEmpty, eraseFirstCol
 from random import randint
 
 from os import mkdir, unlink, path, getcwd
@@ -38,6 +38,11 @@ def grab_time(almosttime):
     timestr = re.search("expires\":\"(.+)\"\,", tag_contents).group(1)
     datestamp = datetime.fromisoformat(timestr.replace("Z","+00:00")) #out without Z
     return datestamp
+
+def deleteIfExists(array):
+    for i in array:
+        if len(glob.glob(i)) > 0:
+            unlink(path.join(getcwd(),i))
 
 class Gui:
     #all needed outside class should be to properly init and call run()
@@ -99,20 +104,8 @@ class Gui:
         self.threadPat[0]["state"] = 'disabled'
         self.check["state"] = 'disabled'
 
+
     def validateRun(self, func):
-        archiveExists = glob.glob('*.csv')
-
-        if(archiveExists):
-            answer = askyesnocancel(title="WARNING", message="Files with nomination info detected. Delete it before proceeding?")
-            if(answer == None):
-                return
-            if(answer):
-                unlink(path.join(getcwd(),f'{archiveExists[0]}'))
-                unlink(path.join(getcwd(),"A_expected.json"))
-                unlink(path.join(getcwd(),"log_file.txt"))
-                unlink(path.join(getcwd(),"NOMINATIONS.txt"))
-
-
         if not(self.almo.get and self.board[0].get):
             showerror("Missing input", "Empty input.")
             return
@@ -127,31 +120,51 @@ class Gui:
         ):
             showerror("Invalid input detected", "Invalid board.")
             return
-        # if(
-        #     requests.get(
-        #         almoLink + self.almo.get()
-        #     ).status_code < 200
-        #     or 
-        #     requests.get(
-        #         almoLink + self.almo.get()
-        #     ).status_code >= 400
-        # ):
-        #     showerror("Invalid input", "Invalid almo.st link.")
-        #     return 
+        
+        if(
+            requests.get(
+                almoLink + self.almo.get()
+            ).status_code < 200
+            or 
+            requests.get(
+                almoLink + self.almo.get()
+            ).status_code >= 400
+        ):
+            showerror("Invalid input", "Invalid almo.st link.")
+            return 
         if(self.connect.get() and not(self.sheet[0].get())):
             showerror("Invalid input", "If connecting to Google Sheets you must give a sheet name. Disable or input a name.")
             return 
         if(self.connect.get() and not(glob.glob("*.json"))):
             showerror("ERROR", "Client secret json not found. It is needed to connect with Google Sheet's API.")
             return
+        
+        if not(self.connect.get()):
+            archiveExists = (len(glob.glob('*.csv')) > 0)
+        else:
+            archiveExists = isSheetEmpty(self.sheet[0].get())
+
+        if(archiveExists):
+            answer = askyesnocancel(title="WARNING", message="Files with nomination info detected. Delete it before proceeding?")
+            if(answer == None):
+                return
+            if(answer):
+                deleteIfExists([
+                    glob.glob('*.csv')[0],
+                    "A_expected.json",
+                    "log_file.txt",
+                    "NOMINATIONS.txt"
+                ])
+                if(self.connect.get()):
+                    eraseFirstCol(self.sheet[0].get())
+                    
 
         self.lockEntry()
 
         self.paused = BooleanVar(value=False)
 
         self.startStopButton.configure( command=self.pause, image=self.stopIco)
-
-        self.end = datetime.now() + timedelta(hours=2) #grab_time(self.almo.get())
+        self.end = grab_time(self.almo.get())
 
         self.stateInfo = ttk.Label(self.frm, text="I AM ERROR", background="black",
          foreground="green2", padding=10, justify="center")
@@ -205,11 +218,11 @@ class Gui:
                 int(self.minRep[0].get()), self.connect.get())
 
                 self.startStopButton.configure(state="normal")
-
             except Exception as e:               
                 log("SCRAPE ERROR: " + repr(e))
                 log("LAST ERROR MESSAGE: " + str(e))
                 showerror("ERROR", "During bot execution an unexpected error has happened. Error message saved on log_file. Current run terminated.")
+                self.startStopButton.configure(state="normal")
                 self.resetUI(func)
                 self.statusDisplay.configure(image= self.statuses[1])
                 exit()

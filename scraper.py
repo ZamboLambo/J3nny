@@ -141,6 +141,8 @@ def latestWithArchive(latest, archived):
     for i in merged.index:
         if merged.at[i, "youCount_x"] < merged.at[i, "youCount_y"] or (pd.isna(merged.at[i, "youCount_x"])):
             merged.at[i, "youCount_x"] = merged.at[i, "youCount_y"]
+        if not str(merged.at[i, "status_x"]).startswith("HOST"): #if y status starts with host it should supersed
+            merged.at[i, "status_x"] = merged.at[i, "status_y"]
     merged.drop(columns=["youCount_y"], inplace=True)
     merged.rename(columns={"youCount_x" : "youCount"}, inplace=True)
 
@@ -172,6 +174,7 @@ def renameIfList(merged, i, item, part):
 
 
 def validate(row, minRep):
+    print(row)
     #rowwise validation
     row["nomination"] = findNomination(row["text"])
 
@@ -183,7 +186,7 @@ def validate(row, minRep):
         if not row["hasFile"]:
             row["status"] = "NO_IMAGE_FILE"
             return row
-        if row["youCount"] > minRep:
+        if row["youCount"] < minRep: 
             row["status"] = "BELOW_YOU_LIMIT"
             return row
         if len(row["nomination"]) > 120:
@@ -386,11 +389,17 @@ def connectOrReadOutsideFile(connectGoogle, nomFile, sheet):
 
 def handleThreadArchive(current, archiveExists, isNewThread, currentLink):
     if archiveExists:
-        archive = pd.read_csv(archiveExists[0], converters={ "replies" : literal_eval, "youCount" : np.int64, "threadNumber" : np.int64}, encoding='utf-8', on_bad_lines='skip', sep=';')
-
+        #TODO: when new thread the output that was in the older thread is being deleted rather than remaining where was
+        #TODO: below is causing EOF while parsing sometimes
+        #may be related to status being ;; once no replies and no current status
+        archive = pd.read_csv(archiveExists[0], encoding='utf-8', on_bad_lines='skip', sep=';')
+        archive["youCount"] = archive["youCount"].astype("int64")
+        archive["threadNumber"] = archive["threadNumber"].astype("int64")
+        archive["replies"] = archive["replies"].apply(lambda x: pd.eval(x) if not pd.isna(x) else [])
+ 
         log(f"READ: {archiveExists[0]} ")
 
-        if isNewThread:
+        if isNewThread:#TODO: fix this shit isnt updating it seems
             lastNu = archive["threadNumber"].iat[-1]
 
             current.insert(loc=7, column="threadNumber", value=lastNu+1)
@@ -420,7 +429,7 @@ def handleThreadArchive(current, archiveExists, isNewThread, currentLink):
             nominationList.append(f"Thread {i}")
         df = grouped.get_group(i)
         for index, row in df.iterrows():
-            if (row["status"].find("ALLOW") != -1):
+            if (str(row["status"]).find("ALLOW") != -1):
                 nominationList.append(row["nomination"])
     return [x for x in nominationList if str(x) != 'nan'], threadNumber
 
@@ -431,18 +440,20 @@ def tryFindThread(archiveExists, board, minRep, tPattern):
         lastNumber = archiveExists[0].rstrip(".csv")
         tryLink = f"https://boards.4chan.org/{board}/thread/{lastNumber}"
         current = chanThread(link=tryLink)
+    else:
+        current = None
 
-        if not current.isAlive():
+    if current and not current.isAlive():
 
-            isNewThread = True
-            last = findLatest(tPattern, board)
-            if not last:
-                log("No new thread found")
-                log(logEnd)
-                return isNewThread, pd.Dataframe(), None
-            log(f"Found thread: {last}")
+        isNewThread = True
+        last = findLatest(tPattern, board)
+        if not last:
+            log("No new thread found")
+            log(logEnd)
+            return isNewThread, pd.Dataframe(), None
+        log(f"Found thread: {last}")
 
-            current = chanThread(link=last)
+        current = chanThread(link=last)
     else:
         last = findLatest(tPattern, board)
         if not last:
@@ -458,7 +469,7 @@ def tryFindThread(archiveExists, board, minRep, tPattern):
         current.posts.insert(loc=6, column="nomination", value=pd.NA)
     
     currentLink = current.link
-    current = current.posts.apply(validate, axis=1, args=(minRep,))##<-- typeError
+    current = current.posts.apply(lambda x: validate(x, minRep), axis=1)
     return isNewThread, current, currentLink
 
 def sendAndArchive(connectGoogle, sheet, nominationList, nomFile):
